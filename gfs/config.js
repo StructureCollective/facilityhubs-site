@@ -8,7 +8,7 @@ const APP_CONFIG = {
   // The Apps Script Web App /exec URL for the consolidated GFS
   // Facility Hub backend. Apps Script -> Deploy -> Manage deployments
   // -> copy the Web app URL.
-  apiUrl: 'https://script.google.com/macros/s/REPLACE_WITH_YOUR_DEPLOYMENT_ID/exec',
+  apiUrl: 'https://script.google.com/a/macros/greggsfacilitysolutions.com/s/AKfycbzp8T3eykWGKDpl9vmFDNIq5V9hVlM9ttWcAkPjHRTvuI2OsrNwP7-ODt1pl1FnPK-0/exec',
 
   // Must match API_TOKEN in apps-script/GFSFacilityHub/Code.gs. Change
   // both together.
