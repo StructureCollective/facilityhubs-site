@@ -1,0 +1,114 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>GFS | OfficeSync</title>
+<link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+<div class="app-shell">
+
+  <!-- LEFT NAVIGATION -->
+  <aside class="sidebar">
+    <div class="brand">
+      <img
+        class="brand-logo"
+        src="/assets/gfs-logo.png"
+        alt="Gregg's Facility Solutions logo"
+        onerror="this.replaceWith(Object.assign(document.createElement('div'), {className:'brand-fallback', innerHTML:'<strong>GFS</strong><span>FACILITY SOLUTIONS</span>'}))"
+      >
+      <span class="suite-badge">GFS Facility Hub</span>
+    </div>
+
+    <nav aria-label="Primary navigation">
+      <a href="../Dashboard/" class="nav-link"><span>&#8962;</span> Dashboard</a>
+      <a href="../VendorSync/" class="nav-link"><span>&#9831;</span> Vendors</a>
+      <a href="#" class="nav-link active" aria-current="page"><span>&#8982;</span> Offices</a>
+      <a data-url-key="workOrdersUrl" class="nav-link"><span>&#9635;</span> Work Orders</a>
+      <a data-url-key="reportsUrl" class="nav-link"><span>&#9637;</span> Reports</a>
+      <a href="/" class="nav-link"><span>&#8962;</span> All Hubs</a>
+    </nav>
+  </aside>
+
+  <!-- MAIN APPLICATION -->
+  <main>
+
+    <!-- PAGE HEADER -->
+    <header class="page-header">
+      <div>
+        <h1>OfficeSync</h1>
+        <p>Find office locations and contact details in one place.</p>
+      </div>
+
+      <div class="metric-card">
+        <span class="metric-icon navy">&#9638;</span>
+        <strong id="officeCount">&mdash;</strong>
+        <small>Offices</small>
+      </div>
+
+      <div class="metric-card">
+        <span class="metric-icon teal">&#9679;</span>
+        <strong id="stateCount">&mdash;</strong>
+        <small>States</small>
+      </div>
+    </header>
+
+    <!-- SEARCH AND FILTERS -->
+    <section class="search-panel" aria-label="Office search">
+      <label class="search-box">
+        <span>&#8981;</span>
+        <input id="query" type="search" placeholder="Search offices" autocomplete="off">
+      </label>
+
+      <p class="helper">Search by office, street address, city, state, or ZIP code</p>
+
+      <div class="filter-row">
+        <label>
+          State
+          <select id="state"><option value="">All</option></select>
+        </label>
+
+        <label>
+          City
+          <select id="city"><option value="">All</option></select>
+        </label>
+
+        <button id="searchButton" class="button primary" type="button">&#8981; &nbsp; Search</button>
+        <button id="clearButton" class="button secondary" type="button">Clear</button>
+      </div>
+    </section>
+
+    <!-- ALL OFFICES -->
+    <section class="all-offices">
+      <div class="section-heading">
+        <h2>All offices</h2>
+        <span id="resultCount" class="count-pill">Loading&hellip;</span>
+      </div>
+
+      <div id="officeGrid" class="office-grid" aria-live="polite"></div>
+
+      <div id="emptyState" class="empty-state" hidden>No offices match those filters.</div>
+    </section>
+
+  </main>
+</div>
+
+<!-- FIXED FOOTER -->
+<footer>
+  <span class="version" id="versionBadge">OfficeSync</span>
+  <span>GFS Facility Hub</span>
+  <span></span>
+</footer>
+
+<!-- SUPPORT BUTTON -->
+<a id="supportButton" class="support-button" href="#">? &nbsp; OfficeSync Support</a>
+
+<!-- LOADING SCREEN -->
+<div id="loading" class="loading">Loading offices&hellip;</div>
+
+<script src="../config.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

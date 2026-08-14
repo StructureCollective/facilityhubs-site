@@ -1,0 +1,178 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>GFS | VendorSync</title>
+<link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+<div class="app-shell">
+
+  <!-- LEFT NAVIGATION -->
+  <aside class="sidebar">
+    <div class="brand">
+      <img
+        class="brand-logo"
+        src="/assets/gfs-logo.png"
+        alt="Gregg's Facility Solutions logo"
+        onerror="this.replaceWith(Object.assign(document.createElement('div'), {className:'brand-fallback', innerHTML:'<strong>GFS</strong><span>FACILITY SOLUTIONS</span>'}))"
+      >
+      <span class="suite-badge">GFS Facility Hub</span>
+    </div>
+
+    <nav aria-label="Primary navigation">
+      <a href="../Dashboard/" class="nav-link"><span>&#8962;</span> Dashboard</a>
+      <a href="#" class="nav-link active" aria-current="page"><span>&#9831;</span> Vendors</a>
+      <a href="../OfficeSync/" class="nav-link"><span>&#8982;</span> Offices</a>
+      <a data-url-key="workOrdersUrl" class="nav-link"><span>&#9635;</span> Work Orders</a>
+      <a data-url-key="reportsUrl" class="nav-link"><span>&#9637;</span> Reports</a>
+      <a href="/" class="nav-link"><span>&#8962;</span> All Hubs</a>
+    </nav>
+  </aside>
+
+  <!-- MAIN APPLICATION -->
+  <main>
+
+    <!-- PAGE HEADER -->
+    <header class="page-header">
+      <div>
+        <h1>VendorSync</h1>
+        <p>Search and manage preferred service vendors.</p>
+      </div>
+
+      <button id="addVendorButton" class="button primary small" type="button">&#65291; Add Vendor</button>
+
+      <div class="metric-card">
+        <span class="metric-icon navy">&#9638;</span>
+        <strong id="vendorCount">&mdash;</strong>
+        <small>Vendors</small>
+      </div>
+
+      <div class="metric-card">
+        <span class="metric-icon teal">&#9679;</span>
+        <strong id="tradeCount">&mdash;</strong>
+        <small>Trades</small>
+      </div>
+    </header>
+
+    <!-- SEARCH AND FILTERS -->
+    <section class="search-panel" aria-label="Vendor search">
+      <label class="search-box">
+        <span>&#8981;</span>
+        <input id="query" type="search" placeholder="Search vendors" autocomplete="off">
+      </label>
+
+      <p class="helper">Search by vendor, trade, state, city/area, POC, or contact</p>
+
+      <div class="filter-row">
+        <label>
+          Trade
+          <select id="trade"><option value="">All</option></select>
+        </label>
+
+        <label>
+          State
+          <select id="state"><option value="">All</option></select>
+        </label>
+
+        <button id="searchButton" class="button primary" type="button">&#8981; &nbsp; Search</button>
+        <button id="clearButton" class="button secondary" type="button">Clear</button>
+      </div>
+    </section>
+
+    <!-- FEATURED SEARCH RESULT -->
+    <section id="matchSection" class="match-section" hidden>
+      <h2 id="matchCount">0 results found</h2>
+      <div id="featuredMatch"></div>
+    </section>
+
+    <!-- ALL VENDORS -->
+    <section class="all-vendors">
+      <div class="section-heading">
+        <h2>All vendors</h2>
+        <span id="resultCount" class="count-pill">Loading&hellip;</span>
+      </div>
+
+      <div id="vendorGrid" class="vendor-grid" aria-live="polite"></div>
+
+      <div id="emptyState" class="empty-state" hidden>No vendors match those filters.</div>
+    </section>
+
+  </main>
+</div>
+
+<!-- FIXED FOOTER -->
+<footer>
+  <span class="version" id="versionBadge">VendorSync</span>
+  <span>GFS Facility Hub</span>
+  <span></span>
+</footer>
+
+<!-- SUPPORT BUTTON -->
+<a id="supportButton" class="support-button" href="#">? &nbsp; VendorSync Support</a>
+
+<!-- LOADING SCREEN -->
+<div id="loading" class="loading">Loading vendors&hellip;</div>
+
+<!-- ADD VENDOR MODAL -->
+<div id="addVendorModal" class="modal-overlay" hidden>
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="addVendorTitle">
+    <h2 id="addVendorTitle">Add a vendor</h2>
+    <p class="modal-subtitle">New vendors are added to the Preferred Vendor List immediately.</p>
+
+    <form id="addVendorForm">
+      <label class="form-field">
+        <span>Vendor name *</span>
+        <input id="fieldVendor" name="vendor" type="text" required>
+      </label>
+
+      <label class="form-field">
+        <span>Trade(s) &mdash; comma separated</span>
+        <input id="fieldTrade" name="trade" type="text" placeholder="Carpet/Flooring, Glass/Windows">
+      </label>
+
+      <div class="form-row">
+        <label class="form-field">
+          <span>Point of contact</span>
+          <input id="fieldPoc" name="poc" type="text">
+        </label>
+
+        <label class="form-field">
+          <span>Contact number</span>
+          <input id="fieldContact" name="contact" type="tel">
+        </label>
+      </div>
+
+      <div class="form-row">
+        <label class="form-field">
+          <span>City / Area</span>
+          <input id="fieldCityArea" name="cityArea" type="text">
+        </label>
+
+        <label class="form-field">
+          <span>State</span>
+          <input id="fieldState" name="state" type="text" maxlength="2" placeholder="TX">
+        </label>
+      </div>
+
+      <label class="form-field">
+        <span>Rating (0&ndash;5)</span>
+        <input id="fieldRating" name="rating" type="number" min="0" max="5" step="1">
+      </label>
+
+      <p id="addVendorError" class="form-error" hidden></p>
+
+      <div class="modal-actions">
+        <button type="button" id="cancelAddVendor" class="button secondary">Cancel</button>
+        <button type="submit" id="submitAddVendor" class="button primary">Save vendor</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script src="../config.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
