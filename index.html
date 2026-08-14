@@ -52,6 +52,21 @@
     display: block;
   }
 
+  .brand-mark {
+    display: block;
+  }
+
+  .brand-logo {
+    display: block;
+    height: 40px;
+    width: auto;
+  }
+
+  .brand-logo.footer {
+    height: 26px;
+  }
+
+  
   .brand-word {
     font-size: 26px;
     font-weight: 800;
@@ -252,28 +267,17 @@
     footer.site-footer { flex-direction: column; gap: 14px; text-align: center; }
   }
 </style>
+
+  
 </head>
 <body>
 
 <header class="site-header">
   <div class="brand">
-    <svg class="brand-mark" width="40" height="40" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <rect x="3" y="14" width="12" height="23" rx="1.5" fill="#0a2b70"/>
-      <rect x="17" y="6" width="14" height="31" rx="1.5" fill="#1fa9ae"/>
-      <rect x="6" y="18" width="3" height="3" fill="#ffffff"/>
-      <rect x="6" y="24" width="3" height="3" fill="#ffffff"/>
-      <rect x="6" y="30" width="3" height="3" fill="#ffffff"/>
-      <rect x="21" y="11" width="3" height="3" fill="#ffffff"/>
-      <rect x="21" y="17" width="3" height="3" fill="#ffffff"/>
-      <rect x="21" y="23" width="3" height="3" fill="#ffffff"/>
-      <rect x="21" y="29" width="3" height="3" fill="#ffffff"/>
-      <circle cx="9" cy="4" r="3" fill="#0a2b70"/>
-      <circle cx="34" cy="10" r="3" fill="#f2994a"/>
-      <circle cx="34" cy="30" r="3" fill="#0a2b70"/>
-      <path d="M9 7 L9 12" stroke="#0a2b70" stroke-width="2"/>
-      <path d="M12 5 L30 10" stroke="#7c8aad" stroke-width="1.6"/>
-      <path d="M12 5 L32 28" stroke="#7c8aad" stroke-width="1.6"/>
-    </svg>
+    <img class="brand-logo" src="/assets/facility-hubs-logo.png" alt="Facility Hubs">
+  </div>
+  <nav class="top-nav">
+    
     <span class="brand-word">facility <span class="light">hubs</span></span>
   </div>
   <nav class="top-nav">
@@ -341,12 +345,9 @@
 
 <footer class="site-footer">
   <div class="brand">
-    <svg width="26" height="26" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <rect x="3" y="14" width="12" height="23" rx="1.5" fill="#0a2b70"/>
-      <rect x="17" y="6" width="14" height="31" rx="1.5" fill="#1fa9ae"/>
-    </svg>
-    <span class="brand-word" style="font-size:18px;">facility <span class="light">hubs</span></span>
+    <img class="brand-logo footer" src="/assets/facility-hubs-logo.png" alt="Facility Hubs">
   </div>
+  
   <div class="footer-links">
     <a href="#privacy">Privacy</a>
     <a href="#support">Support</a>
