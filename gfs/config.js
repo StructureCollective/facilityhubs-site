@@ -12,7 +12,7 @@ const APP_CONFIG = {
 
   // Must match API_TOKEN in apps-script/GFSFacilityHub/Code.gs. Change
   // both together.
-  apiToken: 'REPLACE_WITH_A_LONG_RANDOM_TOKEN',
+  apiToken: '46ec51c3-743b-48bb-a47f-f56f2f6940fb',
 
   // Sidebar placeholders for tools that don't exist yet.
   workOrdersUrl: '',
