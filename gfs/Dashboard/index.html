@@ -1,0 +1,97 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>GFS | Facility Hub Dashboard</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div id="authCheck" class="loading">Checking access&hellip;</div>
+<script src="../auth-config.js"></script>
+<script src="../auth.js"></script>
+<script>GFSAuth.requireAuth();</script>
+<div class="shell">
+<aside>
+<div class="brand">
+<img
+  src="/assets/gfs-logo.png"
+  alt="Gregg's Facility Solutions"
+  onerror="this.style.display='none'"
+>
+<small>GFS Facility Hub</small>
+</div>
+<nav>
+<a class="active" aria-current="page">&#9698; <span>Dashboard</span></a>
+<a href="../VendorSync/">&#9831; <span>Vendors</span></a>
+<a href="../OfficeSync/">&#9682; <span>Offices</span></a>
+<a data-url-key="workOrdersUrl">&#9635; <span>Work Orders</span></a>
+<a data-url-key="reportsUrl">&#9637; <span>Reports</span></a>
+<a href="/">&#8962; <span>All Hubs</span></a>
+<a href="#" onclick="GFSAuth.signOut(); return false;">&#9099; <span>Sign out</span></a>
+</nav>
+</aside>
+<main>
+<header>
+<h1>Facility Hub Dashboard</h1>
+<p>A clear view of vendor coverage, office locations, and team support.</p>
+</header>
+<section class="metrics">
+<article>
+<i>&#9831;</i>
+<strong id="vendorTotal">&mdash;</strong>
+<span>Preferred Vendors</span>
+</article>
+<article>
+<i>&#9635;</i>
+<strong id="tradeTotal">&mdash;</strong>
+<span>Trade Categories</span>
+</article>
+<article>
+<i>&#8982;</i>
+<strong id="stateTotal">&mdash;</strong>
+<span>States</span>
+</article>
+<article>
+<i>&#9638;</i>
+<strong id="officeTotal">&mdash;</strong>
+<span>Office Locations</span>
+</article>
+</section>
+<section class="grid">
+<article class="panel chart-panel">
+<h2>Trade Coverage by State</h2>
+<div id="tradeChart" class="trade-chart"></div>
+<div id="legend" class="legend"></div>
+</article>
+<article class="panel donut-panel">
+<h2>Vendor Coverage</h2>
+<div class="donut-wrap">
+<div id="donut" class="donut">
+<span>
+<b id="donutTotal">&mdash;</b>
+Total Vendors
+</span>
+</div>
+<div id="stateLegend"></div>
+</div>
+</article>
+<article class="panel team-panel">
+<h2>Management &amp; Team Contacts</h2>
+<div id="teamList"></div>
+</article>
+<article class="panel side-panel">
+<h2>Top Service Categories</h2>
+<div id="topTrades"></div>
+<h2 class="quick-title">Quick Actions</h2>
+<a class="action" href="../VendorSync/">&#8981; Search Vendors</a>
+<a class="action" href="../OfficeSync/">&#9638; Find an Office</a>
+</article>
+</section>
+</main>
+</div>
+<div id="loading" class="loading">Loading dashboard&hellip;</div>
+<script src="../config.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
