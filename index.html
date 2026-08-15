@@ -1,0 +1,432 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Facility Hubs | Find Your Hub</title>
+<meta name="description" content="Find your organization's secure hub to access the tools, directories, work orders, and resources your team uses every day.">
+<link rel="canonical" href="https://facilityhubs.com/">
+<link rel="icon" type="image/png" href="/assets/facility-hubs-favicon.png">
+
+<!-- Link preview tags -- these are what iMessage, SMS/RCS, Slack, and
+     social apps read to build a preview card when this URL is shared.
+     Without them most apps fall back to a bare link with no image. -->
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Facility Hubs">
+<meta property="og:title" content="Facility Hubs | Find Your Hub">
+<meta property="og:description" content="Find your organization's secure hub to access the tools, directories, work orders, and resources your team uses every day.">
+<meta property="og:url" content="https://facilityhubs.com/">
+<meta property="og:image" content="https://facilityhubs.com/assets/og-image.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Facility Hubs | Find Your Hub">
+<meta name="twitter:description" content="Find your organization's secure hub to access the tools, directories, work orders, and resources your team uses every day.">
+<meta name="twitter:image" content="https://facilityhubs.com/assets/og-image.png">
+
+<style>
+  :root {
+    --navy: #0a2b70;
+    --navy-dark: #06235e;
+    --teal: #1fa9ae;
+    --blue: #3156e8;
+    --orange: #f2994a;
+    --ink: #0d1b3b;
+    --muted: #5b6b8c;
+    --line: #e2e7f0;
+    --canvas: #eef2fb;
+    --surface: #ffffff;
+    --shadow: 0 18px 40px rgba(15, 35, 75, 0.10);
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    background: var(--canvas);
+    color: var(--ink);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, Helvetica, sans-serif;
+  }
+
+  a { color: inherit; }
+
+  /* HEADER */
+  header.site-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 22px 48px;
+    background: #ffffff;
+    border-bottom: 1px solid var(--line);
+  }
+
+  .brand {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+  }
+
+  .brand-mark {
+    display: block;
+  }
+
+  .brand-mark {
+    display: block;
+  }
+
+  .brand-logo {
+    display: block;
+    height: 80px;
+    width: auto;
+  }
+
+  .brand-logo.footer {
+    height: 72px;
+  }
+
+  
+  .brand-word {
+    font-size: 26px;
+    font-weight: 800;
+    letter-spacing: -0.01em;
+  }
+
+  .brand-word .light {
+    color: var(--blue);
+    font-weight: 700;
+  }
+
+  .top-nav {
+    display: flex;
+    gap: 36px;
+    font-weight: 600;
+    font-size: 16px;
+  }
+
+  .top-nav a { text-decoration: none; color: var(--ink); }
+  .top-nav a:hover { color: var(--blue); }
+
+  /* HERO */
+  .hero {
+    position: relative;
+    overflow: hidden;
+    padding: 90px 24px 110px;
+    background: linear-gradient(180deg, #eef2fb 0%, #e7edfa 100%);
+    text-align: center;
+  }
+
+  .hero h1 {
+    max-width: 900px;
+    margin: 0 auto 22px;
+    font-size: 52px;
+    line-height: 1.08;
+    color: var(--navy);
+    font-weight: 800;
+    letter-spacing: -0.01em;
+  }
+
+  .hero p {
+    max-width: 620px;
+    margin: 0 auto 46px;
+    color: #46557a;
+    font-size: 19px;
+    line-height: 1.5;
+  }
+
+  /* FIND YOUR HUB CARD */
+  .finder-card {
+    position: relative;
+    z-index: 2;
+    max-width: 860px;
+    margin: 0 auto;
+    padding: 40px 44px 30px;
+    border-radius: 18px;
+    background: var(--surface);
+    box-shadow: var(--shadow);
+    text-align: left;
+  }
+
+  .finder-card h2 {
+    margin: 0 0 20px;
+    font-size: 24px;
+    color: var(--ink);
+  }
+
+  .finder-row {
+    display: flex;
+    gap: 16px;
+  }
+
+  .search-box {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 0 20px;
+    height: 60px;
+    border: 1px solid #ccd4e6;
+    border-radius: 10px;
+    background: #fbfcfe;
+  }
+
+  .search-box:focus-within {
+    border-color: var(--navy);
+    box-shadow: 0 0 0 3px rgba(10, 43, 112, 0.12);
+  }
+
+  .search-box svg { flex: none; color: #7c8aad; }
+
+  .search-box input {
+    flex: 1;
+    border: 0;
+    outline: 0;
+    background: transparent;
+    font-size: 17px;
+    color: var(--ink);
+    font-family: inherit;
+  }
+
+  .finder-row button {
+    padding: 0 34px;
+    height: 60px;
+    border: 0;
+    border-radius: 10px;
+    background: var(--navy);
+    color: #ffffff;
+    font-weight: 700;
+    font-size: 16px;
+    cursor: pointer;
+  }
+
+  .finder-row button:hover { background: var(--navy-dark); }
+
+  .finder-message {
+    min-height: 24px;
+    margin: 14px 2px 6px;
+    font-size: 14px;
+    font-weight: 600;
+  }
+
+  .finder-message.error { color: #c0392b; }
+  .finder-message.info { color: var(--muted); font-weight: 500; }
+
+  /* FEATURE ROW */
+  .features {
+    max-width: 1080px;
+    margin: 64px auto 0;
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 0;
+  }
+
+  .feature {
+    display: flex;
+    align-items: flex-start;
+    gap: 18px;
+    padding: 0 34px;
+    text-align: left;
+    border-left: 1px solid var(--line);
+  }
+
+  .feature:first-child { border-left: 0; padding-left: 0; }
+
+  .feature-icon {
+    flex: none;
+    display: grid;
+    place-items: center;
+    width: 54px;
+    height: 54px;
+    border-radius: 50%;
+    background: #eef2fb;
+  }
+
+  .feature h3 {
+    margin: 4px 0 6px;
+    font-size: 17px;
+    color: var(--ink);
+  }
+
+  .feature p {
+    margin: 0;
+    color: var(--muted);
+    font-size: 14.5px;
+    line-height: 1.5;
+  }
+
+  /* FOOTER */
+  footer.site-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 34px 48px;
+    background: #ffffff;
+    border-top: 1px solid var(--line);
+    color: var(--muted);
+    font-size: 14px;
+  }
+
+  .footer-links {
+    display: flex;
+    gap: 26px;
+  }
+
+  .footer-links a { text-decoration: none; color: var(--ink); font-weight: 600; }
+  .footer-links a:hover { color: var(--blue); }
+
+  @media (max-width: 860px) {
+    header.site-header { padding: 18px 22px; }
+    .hero { padding: 60px 18px 90px; }
+    .hero h1 { font-size: 36px; }
+    .finder-card { padding: 28px 22px; }
+    .finder-row { flex-direction: column; }
+    .finder-row button { height: 52px; }
+    .features { grid-template-columns: 1fr; gap: 28px; margin-top: 48px; }
+    .feature { border-left: 0; padding: 0; }
+    footer.site-footer { flex-direction: column; gap: 14px; text-align: center; }
+  }
+</style>
+
+  
+</head>
+<body>
+
+<header class="site-header">
+  <div class="brand">
+    <img class="brand-logo" src="/assets/facility-hubs-logo.png" alt="Facility Hubs">
+  </div>
+  <nav class="top-nav">
+  <nav class="top-nav">
+    <a href="#about">About</a>
+    <a href="#support">Support</a>
+  </nav>
+</header>
+
+<section class="hero">
+  <h1>One place to access your facility tools.</h1>
+  <p>Find your organization's secure hub to access the tools, directories, work orders, and resources your team uses every day.</p>
+
+  <div class="finder-card">
+    <h2>Find Your Hub</h2>
+    <div class="finder-row">
+      <label class="search-box">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="11" cy="11" r="7"/>
+          <line x1="21" y1="21" x2="16.65" y2="16.65"/>
+        </svg>
+        <input id="orgQuery" type="search" placeholder="Search by company or organization" autocomplete="off">
+      </label>
+      <button id="continueButton" type="button">Continue</button>
+    </div>
+    <p id="finderMessage" class="finder-message"></p>
+  </div>
+
+  <div class="features">
+    <div class="feature">
+      <div class="feature-icon">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#0a2b70" stroke-width="1.8">
+          <path d="M4 21V9l8-5 8 5v12"/><path d="M9 21v-6h6v6"/>
+        </svg>
+      </div>
+      <div>
+        <h3>Company-Specific Access</h3>
+        <p>Find the right hub for your organization.</p>
+      </div>
+    </div>
+    <div class="feature">
+      <div class="feature-icon">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#0a2b70" stroke-width="1.8">
+          <rect x="3" y="3" width="8" height="8" rx="1.5"/><rect x="13" y="13" width="8" height="8" rx="1.5"/>
+          <path d="M11 7h2M7 11v2M17 7v6"/>
+        </svg>
+      </div>
+      <div>
+        <h3>Connected Tools</h3>
+        <p>Access the tools and resources your team relies on.</p>
+      </div>
+    </div>
+    <div class="feature">
+      <div class="feature-icon">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#0a2b70" stroke-width="1.8">
+          <path d="M12 2 4 6v6c0 5 3.5 8.5 8 10 4.5-1.5 8-5 8-10V6l-8-4z"/><path d="M9 12l2 2 4-4"/>
+        </svg>
+      </div>
+      <div>
+        <h3>Secure &amp; Organized</h3>
+        <p>Enterprise-grade security keeps your data safe.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<footer class="site-footer">
+  <div class="brand">
+    <img class="brand-logo footer" src="/assets/facility-hubs-logo.png" alt="Facility Hubs">
+  </div>
+  
+  <div class="footer-links">
+    <a href="#privacy">Privacy</a>
+    <a href="#support">Support</a>
+  </div>
+  <span>&copy; <span id="year"></span> Facility Hubs. All rights reserved.</span>
+</footer>
+
+<script>
+  document.getElementById('year').textContent = new Date().getFullYear();
+
+  // Maps an organization search to its hub path. Add new orgs here as
+  // more hubs go live (each key is matched case-insensitively against
+  // the search box; list every alias you want to resolve).
+  var HUB_DIRECTORY = [
+    {
+      match: ['gfs', "gregg's facility solutions", 'greggs facility solutions', 'vendorsync'],
+      path: '/gfs/Dashboard/',
+      label: "Gregg's Facility Solutions"
+    }
+  ];
+
+  function findHub(query) {
+    var normalized = query.trim().toLowerCase();
+    if (!normalized) return null;
+
+    for (var i = 0; i < HUB_DIRECTORY.length; i++) {
+      var entry = HUB_DIRECTORY[i];
+      for (var j = 0; j < entry.match.length; j++) {
+        if (entry.match[j] === normalized || normalized.indexOf(entry.match[j]) !== -1) {
+          return entry;
+        }
+      }
+    }
+    return null;
+  }
+
+  function goToHub() {
+    var input = document.getElementById('orgQuery');
+    var message = document.getElementById('finderMessage');
+    var query = input.value;
+
+    if (!query.trim()) {
+      message.textContent = 'Enter a company or organization name to continue.';
+      message.className = 'finder-message error';
+      return;
+    }
+
+    var hub = findHub(query);
+
+    if (hub) {
+      message.textContent = 'Redirecting to ' + hub.label + '…';
+      message.className = 'finder-message info';
+      window.location.href = hub.path;
+    } else {
+      message.textContent = "We couldn't find a hub for \"" + query + '". Contact support if you believe this is a mistake.';
+      message.className = 'finder-message error';
+    }
+  }
+
+  document.getElementById('continueButton').addEventListener('click', goToHub);
+  document.getElementById('orgQuery').addEventListener('keydown', function (event) {
+    if (event.key === 'Enter') goToHub();
+  });
+</script>
+
+</body>
+</html>
