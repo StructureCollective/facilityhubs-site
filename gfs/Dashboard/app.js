@@ -74,6 +74,9 @@
     renderTopTrades(d);
     renderTeam(d.team);
     $('loading').hidden = true;
+    // Re-apply in case this page's icons.js loaded/parsed after the
+    // DOMContentLoaded pass above (defensive, cheap, idempotent).
+    if (window.GFSIcons) GFSIcons.apply();
   }
 
   function renderBars(d) {

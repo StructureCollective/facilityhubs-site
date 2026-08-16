@@ -390,6 +390,9 @@
     const loading = $('loading');
     loading.textContent = message || 'Loading vendors…';
     loading.hidden = !show;
+    // Defensive re-apply: cheap and idempotent, guards against icons.js
+    // finishing its own load slightly after the initial DOMContentLoaded pass.
+    if (!show && window.GFSIcons) GFSIcons.apply();
   }
 
   function showError(error) {
