@@ -92,12 +92,18 @@
     color: var(--muted);
   }
   .built-by {
-    display: inline-block;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
     margin-top: 6px;
     color: #8b95ab;
     font-size: .74rem;
     font-weight: 600;
     text-decoration: none;
+  }
+  .built-by img {
+    display: block;
+    border-radius: 3px;
   }
   .built-by:hover {
     color: var(--navy);
@@ -134,7 +140,10 @@
 
     <footer>
       GFS Facility Hub &middot; Access is restricted to authorized accounts<br>
-      <a class="built-by" href="https://structurecollective.com" target="_blank" rel="noopener">Built by Structure Collective</a>
+      <a class="built-by" href="https://structurecollective.com" target="_blank" rel="noopener">
+        <img src="/assets/structure-collective-icon.png" alt="" width="14" height="14">
+        Built by Structure Collective
+      </a>
     </footer>
   </div>
 

@@ -404,11 +404,20 @@ footer > span:nth-child(2) {
 }
 
 .built-by {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
   justify-self: end;
+  white-space: nowrap;
   color: #8b95ab;
   font-size: 12px;
   font-weight: 600;
   text-decoration: none;
+}
+
+.built-by img {
+  display: block;
+  border-radius: 3px;
 }
 
 .built-by:hover {

@@ -9,7 +9,12 @@
  */
 (function (global) {
   function svg(inner) {
-    return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" ' +
+    // width/height are set here as a fallback so icons render at a sane
+    // size even on a page whose CSS doesn't include the [data-icon] svg
+    // sizing rule; any page that does have that rule (all of them, as of
+    // this writing) overrides these via CSS, which wins over presentation
+    // attributes.
+    return '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" ' +
       'stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" ' +
       'aria-hidden="true">' + inner + '</svg>';
   }
