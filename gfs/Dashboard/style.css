@@ -1,10 +1,17 @@
 :root {
-  --navy: #102f73;
-  --teal: #0aa39a;
-  --ink: #102349;
-  --muted: #677086;
-  --line: #e2e6ed;
-  --bg: #f7f8fb;
+  --navy: #0d2b5c;
+  --navy-dark: #081c3f;
+  --teal: #0a7f87;
+  --gold: #a9782c;
+  --gold-light: #c99b4a;
+  --ink: #12192b;
+  --muted: #5b6478;
+  --line: #d7dbe3;
+  --line-strong: #c3c9d4;
+  --bg: #f5f6f9;
+  --shadow: 0 6px 18px rgba(13, 27, 58, 0.1);
+  --font-head: Georgia, 'Times New Roman', serif;
+  --font-body: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif;
 }
 
 * {
@@ -14,8 +21,25 @@
 body {
   margin: 0;
   background: var(--bg);
-  font: 15px Arial, sans-serif;
+  font: 15px/1.5 var(--font-body);
   color: var(--ink);
+}
+
+h1, h2 {
+  font-family: var(--font-head);
+  font-weight: 700;
+}
+
+[data-icon] {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 0;
+}
+
+[data-icon] svg {
+  width: 1em;
+  height: 1em;
 }
 
 .shell {
@@ -53,23 +77,31 @@ nav {
 }
 
 nav a {
-  padding: 17px;
+  padding: 14px 16px;
   color: white;
   text-decoration: none;
-  border-radius: 10px;
+  border-left: 3px solid transparent;
+  border-radius: 5px;
   font-weight: 700;
   display: flex;
+  align-items: center;
   gap: 15px;
   cursor: pointer;
 }
 
+nav a span svg {
+  width: 20px;
+  height: 20px;
+}
+
 nav a.active {
   background: white;
+  border-left-color: var(--gold);
   color: var(--navy);
 }
 
 main {
-  padding: 25px 36px 50px;
+  padding: 25px 36px 90px;
   max-width: 1500px;
   width: 100%;
 }
@@ -95,13 +127,14 @@ header p {
 .metrics article,
 .panel {
   background: white;
-  border: 1px solid var(--line);
-  border-radius: 15px;
-  box-shadow: 0 4px 15px #102f7310;
+  border: 1px solid var(--line-strong);
+  border-radius: 10px;
+  box-shadow: var(--shadow);
 }
 
 .metrics article {
   padding: 20px;
+  border-top: 3px solid var(--navy);
   display: grid;
   grid-template-columns: 60px 1fr;
 }
@@ -111,12 +144,17 @@ header p {
   width: 50px;
   height: 50px;
   border-radius: 50%;
-  background: #e1f3f2;
+  background: #e1f0ee;
   color: var(--teal);
   display: grid;
   place-items: center;
   font-size: 24px;
   font-style: normal;
+}
+
+.metrics i svg {
+  width: 24px;
+  height: 24px;
 }
 
 .metrics strong {
@@ -313,11 +351,15 @@ header p {
   text-align: center;
   border: 1px solid var(--teal);
   color: var(--teal);
-  padding: 15px;
+  padding: 13px;
   margin: 10px 0;
-  border-radius: 10px;
+  border-radius: 7px;
   text-decoration: none;
   font-weight: 700;
+}
+
+.action:hover {
+  background: #e1f0ee;
 }
 
 .loading {
@@ -329,6 +371,55 @@ header p {
   font-size: 21px;
   color: var(--navy);
   font-weight: 700;
+}
+
+footer {
+  position: fixed;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  z-index: 20;
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  align-items: center;
+  height: 64px;
+  padding: 0 34px;
+  border-top: 1px solid var(--line);
+  background: #ffffff;
+  color: #53627b;
+  font-weight: 600;
+}
+
+footer > span:nth-child(2) {
+  text-align: center;
+}
+
+.version {
+  justify-self: start;
+  padding: 7px 13px;
+  border: 1px solid #d5dbe5;
+  border-radius: 999px;
+  background: #f4f6f8;
+  font-size: 12px;
+}
+
+.built-by {
+  justify-self: end;
+  color: #8b95ab;
+  font-size: 12px;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.built-by:hover {
+  color: var(--navy);
+  text-decoration: underline;
+}
+
+@media (max-width: 950px) {
+  footer {
+    display: none;
+  }
 }
 
 [hidden] {

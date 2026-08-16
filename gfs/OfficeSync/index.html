@@ -27,13 +27,13 @@
     </div>
 
     <nav aria-label="Primary navigation">
-      <a href="../Dashboard/" class="nav-link"><span>&#8962;</span> Dashboard</a>
-      <a href="../VendorSync/" class="nav-link"><span>&#9831;</span> Vendors</a>
-      <a href="#" class="nav-link active" aria-current="page"><span>&#8982;</span> Offices</a>
-      <a data-url-key="workOrdersUrl" class="nav-link"><span>&#9635;</span> Work Orders</a>
-      <a data-url-key="reportsUrl" class="nav-link"><span>&#9637;</span> Reports</a>
-      <a href="/" class="nav-link"><span>&#8962;</span> All Hubs</a>
-      <a href="#" class="nav-link" onclick="GFSAuth.signOut(); return false;"><span>&#9099;</span> Sign out</a>
+      <a href="../Dashboard/" class="nav-link"><span data-icon="dashboard"></span> Dashboard</a>
+      <a href="../VendorSync/" class="nav-link"><span data-icon="vendors"></span> Vendors</a>
+      <a href="#" class="nav-link active" aria-current="page"><span data-icon="offices"></span> Offices</a>
+      <a href="../WorkOrders/" class="nav-link"><span data-icon="workOrders"></span> Work Orders</a>
+      <a data-url-key="reportsUrl" class="nav-link"><span data-icon="reports"></span> Reports</a>
+      <a href="/" class="nav-link"><span data-icon="allHubs"></span> All Hubs</a>
+      <a href="#" class="nav-link" onclick="GFSAuth.signOut(); return false;"><span data-icon="signOut"></span> Sign out</a>
     </nav>
   </aside>
 
@@ -48,13 +48,13 @@
       </div>
 
       <div class="metric-card">
-        <span class="metric-icon navy">&#9638;</span>
+        <span class="metric-icon navy" data-icon="offices"></span>
         <strong id="officeCount">&mdash;</strong>
         <small>Offices</small>
       </div>
 
       <div class="metric-card">
-        <span class="metric-icon teal">&#9679;</span>
+        <span class="metric-icon teal" data-icon="states"></span>
         <strong id="stateCount">&mdash;</strong>
         <small>States</small>
       </div>
@@ -104,7 +104,7 @@
 <footer>
   <span class="version" id="versionBadge">OfficeSync</span>
   <span>GFS Facility Hub</span>
-  <span></span>
+  <a class="built-by" href="https://structurecollective.com" target="_blank" rel="noopener">Built by Structure Collective</a>
 </footer>
 
 <!-- SUPPORT BUTTON -->
@@ -113,6 +113,7 @@
 <!-- LOADING SCREEN -->
 <div id="loading" class="loading">Loading offices&hellip;</div>
 
+<script src="../icons.js"></script>
 <script src="../config.js"></script>
 <script src="app.js"></script>
 </body>

@@ -8,6 +8,8 @@
   const colors = ['#102f73', '#0aa39a', '#1677d2', '#7656e8', '#e3ad22', '#e45472'];
 
   document.addEventListener('DOMContentLoaded', function () {
+    if (window.GFSIcons) GFSIcons.apply();
+
     if (!APP_CONFIG.apiUrl || APP_CONFIG.apiUrl.indexOf('REPLACE_WITH') !== -1) {
       $('loading').textContent =
         'Dashboard is not connected to a data source yet. Update apiUrl in gfs/config.js.';

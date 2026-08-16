@@ -1,0 +1,221 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>GFS | Work Orders</title>
+<link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+<div id="authCheck" class="loading">Checking access&hellip;</div>
+<script src="../auth-config.js"></script>
+<script src="../auth.js"></script>
+<script>GFSAuth.requireAuth();</script>
+<div class="app-shell">
+
+  <!-- LEFT NAVIGATION -->
+  <aside class="sidebar">
+    <div class="brand">
+      <img
+        class="brand-logo"
+        src="/assets/gfs-logo.png"
+        alt="Gregg's Facility Solutions logo"
+        onerror="this.replaceWith(Object.assign(document.createElement('div'), {className:'brand-fallback', innerHTML:'<strong>GFS</strong><span>FACILITY SOLUTIONS</span>'}))"
+      >
+      <span class="suite-badge">GFS Facility Hub</span>
+    </div>
+
+    <nav aria-label="Primary navigation">
+      <a href="../Dashboard/" class="nav-link"><span data-icon="dashboard"></span> Dashboard</a>
+      <a href="../VendorSync/" class="nav-link"><span data-icon="vendors"></span> Vendors</a>
+      <a href="../OfficeSync/" class="nav-link"><span data-icon="offices"></span> Offices</a>
+      <a href="#" class="nav-link active" aria-current="page"><span data-icon="workOrders"></span> Work Orders</a>
+      <a data-url-key="reportsUrl" class="nav-link"><span data-icon="reports"></span> Reports</a>
+      <a href="/" class="nav-link"><span data-icon="allHubs"></span> All Hubs</a>
+      <a href="#" class="nav-link" onclick="GFSAuth.signOut(); return false;"><span data-icon="signOut"></span> Sign out</a>
+    </nav>
+  </aside>
+
+  <!-- MAIN APPLICATION -->
+  <main>
+
+    <!-- PAGE HEADER -->
+    <header class="page-header wo-page-header">
+      <div>
+        <h1>Work Orders</h1>
+        <p>Every work order in one place &mdash; filter by client, open the full details, assign it, and track it through to approval.</p>
+      </div>
+    </header>
+
+    <!-- SAMPLE DATA NOTICE -->
+    <div class="demo-banner">
+      <span class="dot" aria-hidden="true"></span>
+      <span>Showing sample work orders. This page isn&rsquo;t connected to live email intake yet &mdash; once you share the email formats, work orders can flow in automatically. Notes, assignments, and status changes here are saved to this browser only, for now.</span>
+    </div>
+
+    <!-- SUMMARY METRICS -->
+    <section class="metrics-row" aria-label="Work order summary">
+      <article class="metric-card">
+        <span class="metric-icon navy" data-icon="total"></span>
+        <strong id="metricTotal">&mdash;</strong>
+        <small>Total Work Orders</small>
+      </article>
+      <article class="metric-card">
+        <span class="metric-icon slate" data-icon="new"></span>
+        <strong id="metricNew">&mdash;</strong>
+        <small>New</small>
+      </article>
+      <article class="metric-card">
+        <span class="metric-icon amber" data-icon="inProgress"></span>
+        <strong id="metricProgress">&mdash;</strong>
+        <small>In Progress</small>
+      </article>
+      <article class="metric-card">
+        <span class="metric-icon green" data-icon="approved"></span>
+        <strong id="metricApproved">&mdash;</strong>
+        <small>Approved</small>
+      </article>
+    </section>
+
+    <!-- SEARCH AND FILTERS -->
+    <section class="search-panel" aria-label="Work order filters">
+      <label class="search-box">
+        <span>&#8981;</span>
+        <input id="query" type="search" placeholder="Search work orders by WO #, site, or description" autocomplete="off">
+      </label>
+
+      <p class="helper">Filter by client</p>
+
+      <div id="clientFilter" class="client-filter" role="group" aria-label="Filter by client"></div>
+
+      <div class="filter-row">
+        <label>
+          Status
+          <select id="status">
+            <option value="">All statuses</option>
+            <option value="new">New</option>
+            <option value="assigned">Assigned</option>
+            <option value="in-progress">In Progress</option>
+            <option value="completed">Completed</option>
+            <option value="approved">Approved</option>
+          </select>
+        </label>
+
+        <label>
+          Priority
+          <select id="priority">
+            <option value="">All priorities</option>
+            <option value="normal">Normal</option>
+            <option value="urgent">Urgent</option>
+            <option value="emergency">Emergency</option>
+          </select>
+        </label>
+
+        <label>
+          Assigned to
+          <select id="assignedFilter">
+            <option value="">Everyone</option>
+            <option value="__unassigned">Unassigned</option>
+          </select>
+        </label>
+
+        <button id="clearButton" class="button secondary" type="button">Clear filters</button>
+      </div>
+    </section>
+
+    <!-- ALL WORK ORDERS -->
+    <section class="all-work-orders">
+      <div class="section-heading">
+        <h2>All work orders</h2>
+        <span id="resultCount" class="count-pill">Loading&hellip;</span>
+      </div>
+
+      <div id="woGrid" class="wo-grid" aria-live="polite"></div>
+
+      <div id="emptyState" class="empty-state" hidden>No work orders match those filters.</div>
+    </section>
+
+  </main>
+</div>
+
+<!-- FIXED FOOTER -->
+<footer>
+  <span class="version" id="versionBadge">Work Orders</span>
+  <span>GFS Facility Hub</span>
+  <a class="built-by" href="https://structurecollective.com" target="_blank" rel="noopener">Built by Structure Collective</a>
+</footer>
+
+<!-- SUPPORT BUTTON -->
+<a id="supportButton" class="support-button" href="#">? &nbsp; Work Orders Support</a>
+
+<!-- LOADING SCREEN -->
+<div id="loading" class="loading">Loading work orders&hellip;</div>
+
+<!-- WORK ORDER DETAIL MODAL -->
+<div id="woModal" class="modal-overlay" hidden>
+  <div class="modal wo-modal" role="dialog" aria-modal="true" aria-labelledby="woModalTitle">
+    <button type="button" id="closeWoModal" class="modal-close" aria-label="Close">&times;</button>
+
+    <div class="wo-modal-head">
+      <div>
+        <span id="woModalClientChip" class="client-chip static"></span>
+        <span id="woModalStatusBadge" class="status-badge"></span>
+        <span id="woModalPriorityBadge" class="priority-badge"></span>
+      </div>
+      <h2 id="woModalTitle">Work Order</h2>
+      <p id="woModalSite" class="wo-modal-site"></p>
+    </div>
+
+    <div class="wo-detail-grid">
+      <div>
+        <span class="field-label">Description</span>
+        <p id="woModalDescription" class="wo-modal-description"></p>
+      </div>
+      <div>
+        <span class="field-label">Date received</span>
+        <p id="woModalReceived"></p>
+      </div>
+      <div>
+        <span class="field-label">Received from</span>
+        <p id="woModalSource"></p>
+      </div>
+      <div>
+        <span class="field-label">WO #</span>
+        <p id="woModalNumber"></p>
+      </div>
+    </div>
+
+    <div class="wo-modal-section">
+      <span class="field-label">Assigned to</span>
+      <select id="woModalAssign" class="assign-select"></select>
+    </div>
+
+    <div class="wo-modal-section">
+      <span class="field-label">Status</span>
+      <div class="status-actions">
+        <button type="button" class="button secondary small" data-set-status="new">New</button>
+        <button type="button" class="button secondary small" data-set-status="assigned">Assigned</button>
+        <button type="button" class="button secondary small" data-set-status="in-progress">In Progress</button>
+        <button type="button" class="button secondary small" data-set-status="completed">Completed</button>
+        <button type="button" id="approveButton" class="button approve small" data-set-status="approved">&#10003; Approve</button>
+      </div>
+      <p id="approveHint" class="approve-hint" hidden>A work order needs to be marked Completed before it can be approved.</p>
+    </div>
+
+    <div class="wo-modal-section">
+      <span class="field-label">Notes</span>
+      <div id="notesList" class="notes-list"></div>
+      <form id="noteForm" class="note-form">
+        <textarea id="noteText" placeholder="Add a note about this work order&hellip;" required></textarea>
+        <button type="submit" class="button primary small">Add note</button>
+      </form>
+    </div>
+  </div>
+</div>
+
+<script src="../icons.js"></script>
+<script src="../config.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

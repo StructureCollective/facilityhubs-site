@@ -1,15 +1,21 @@
 :root {
-  --navy: #0a2b70;
-  --navy-dark: #06235e;
-  --teal: #07929a;
+  --navy: #0d2b5c;
+  --navy-dark: #081c3f;
+  --teal: #0a7f87;
+  --gold: #a9782c;
+  --gold-light: #c99b4a;
   --blue: #3156e8;
-  --ink: #0d1b3b;
-  --muted: #667085;
-  --line: #d8dee8;
+  --ink: #12192b;
+  --muted: #5b6478;
+  --line: #d7dbe3;
+  --line-strong: #c3c9d4;
   --surface: #ffffff;
-  --canvas: #fbfcfe;
-  --soft: #f4f6f9;
-  --shadow: 0 4px 14px rgba(15, 35, 75, 0.08);
+  --canvas: #f5f6f9;
+  --soft: #eef0f4;
+  --shadow: 0 6px 18px rgba(13, 27, 58, 0.1);
+  --shadow-lg: 0 24px 48px rgba(9, 20, 46, 0.18);
+  --font-head: Georgia, 'Times New Roman', serif;
+  --font-body: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif;
 }
 
 * {
@@ -20,13 +26,30 @@ body {
   margin: 0;
   background: var(--canvas);
   color: var(--ink);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-body);
 }
 
 button,
 input,
 select {
   font: inherit;
+}
+
+h1, h2, h3 {
+  font-family: var(--font-head);
+  font-weight: 700;
+}
+
+[data-icon] {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 0;
+}
+
+[data-icon] svg {
+  width: 1em;
+  height: 1em;
 }
 
 .app-shell {
@@ -87,8 +110,9 @@ nav {
   display: flex;
   align-items: center;
   gap: 16px;
-  padding: 15px 18px;
-  border-radius: 9px;
+  padding: 14px 16px;
+  border-left: 3px solid transparent;
+  border-radius: 5px;
   color: var(--ink);
   font-weight: 600;
   text-decoration: none;
@@ -96,13 +120,20 @@ nav {
 }
 
 .nav-link span {
-  width: 28px;
+  width: 24px;
   font-size: 24px;
   text-align: center;
 }
 
+.nav-link .icon svg,
+.nav-link span svg {
+  width: 20px;
+  height: 20px;
+}
+
 .nav-link.active {
-  background: linear-gradient(135deg, var(--navy), #073d9d);
+  border-left-color: var(--gold);
+  background: linear-gradient(90deg, var(--navy) 0%, #123a72 100%);
   color: #ffffff;
   box-shadow: var(--shadow);
 }
@@ -148,8 +179,9 @@ main {
   align-items: center;
   height: 86px;
   padding: 12px 18px;
-  border: 1px solid var(--line);
-  border-radius: 10px;
+  border: 1px solid var(--line-strong);
+  border-top: 3px solid var(--navy);
+  border-radius: 8px;
   background: #ffffff;
   box-shadow: var(--shadow);
 }
@@ -163,6 +195,11 @@ main {
   border-radius: 50%;
   color: #ffffff;
   font-size: 21px;
+}
+
+.metric-icon svg {
+  width: 22px;
+  height: 22px;
 }
 
 .metric-icon.navy {
@@ -187,16 +224,18 @@ main {
 
 .button {
   padding: 13px 25px;
-  border: 0;
-  border-radius: 8px;
+  border: 1px solid transparent;
+  border-radius: 7px;
   font-weight: 700;
   white-space: nowrap;
   cursor: pointer;
 }
 
 .button.primary {
-  background: linear-gradient(135deg, var(--navy), #053a98);
+  border-color: var(--navy-dark);
+  background: linear-gradient(180deg, #1a3f78, var(--navy) 55%, var(--navy-dark));
   color: #ffffff;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.18), 0 1px 2px rgba(9, 20, 46, 0.25);
 }
 
 .button.primary:hover {
@@ -204,9 +243,13 @@ main {
 }
 
 .button.secondary {
-  border: 1px solid #d9dde4;
-  background: #eef0f3;
-  color: #111111;
+  border: 1px solid var(--line-strong);
+  background: #f4f5f7;
+  color: #1c2438;
+}
+
+.button.secondary:hover {
+  background: #eaecf0;
 }
 
 /* SEARCH PANEL */
@@ -315,8 +358,9 @@ h2 {
   align-items: start;
   min-height: 118px;
   padding: 19px 21px;
-  border: 1px solid var(--line);
-  border-radius: 12px;
+  border: 1px solid var(--line-strong);
+  border-left: 4px solid var(--navy);
+  border-radius: 9px;
   background: #ffffff;
   box-shadow: var(--shadow);
 }
@@ -356,11 +400,13 @@ h2 {
 
 .office-pill {
   display: inline-block;
-  padding: 6px 13px;
-  border-radius: 999px;
+  padding: 5px 12px;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  border-radius: 6px;
   color: #ffffff;
-  font-size: 12px;
+  font-size: 11.5px;
   font-weight: 700;
+  letter-spacing: 0.01em;
   background: linear-gradient(135deg, #5556ef, #714af4);
 }
 
@@ -452,6 +498,20 @@ footer > span:nth-child(2) {
   border-radius: 999px;
   background: #f4f6f8;
   font-size: 12px;
+}
+
+.built-by {
+  justify-self: end;
+  margin-right: 260px;
+  color: #8b95ab;
+  font-size: 12px;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.built-by:hover {
+  color: var(--navy);
+  text-decoration: underline;
 }
 
 .support-button {

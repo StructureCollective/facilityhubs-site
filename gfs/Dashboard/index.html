@@ -22,13 +22,13 @@
 <small>GFS Facility Hub</small>
 </div>
 <nav>
-<a class="active" aria-current="page">&#9698; <span>Dashboard</span></a>
-<a href="../VendorSync/">&#9831; <span>Vendors</span></a>
-<a href="../OfficeSync/">&#9682; <span>Offices</span></a>
-<a data-url-key="workOrdersUrl">&#9635; <span>Work Orders</span></a>
-<a data-url-key="reportsUrl">&#9637; <span>Reports</span></a>
-<a href="/">&#8962; <span>All Hubs</span></a>
-<a href="#" onclick="GFSAuth.signOut(); return false;">&#9099; <span>Sign out</span></a>
+<a class="active" aria-current="page"><span data-icon="dashboard"></span> <span>Dashboard</span></a>
+<a href="../VendorSync/"><span data-icon="vendors"></span> <span>Vendors</span></a>
+<a href="../OfficeSync/"><span data-icon="offices"></span> <span>Offices</span></a>
+<a href="../WorkOrders/"><span data-icon="workOrders"></span> <span>Work Orders</span></a>
+<a data-url-key="reportsUrl"><span data-icon="reports"></span> <span>Reports</span></a>
+<a href="/"><span data-icon="allHubs"></span> <span>All Hubs</span></a>
+<a href="#" onclick="GFSAuth.signOut(); return false;"><span data-icon="signOut"></span> <span>Sign out</span></a>
 </nav>
 </aside>
 <main>
@@ -38,22 +38,22 @@
 </header>
 <section class="metrics">
 <article>
-<i>&#9831;</i>
+<i data-icon="vendors"></i>
 <strong id="vendorTotal">&mdash;</strong>
 <span>Preferred Vendors</span>
 </article>
 <article>
-<i>&#9635;</i>
+<i data-icon="tradeCategories"></i>
 <strong id="tradeTotal">&mdash;</strong>
 <span>Trade Categories</span>
 </article>
 <article>
-<i>&#8982;</i>
+<i data-icon="states"></i>
 <strong id="stateTotal">&mdash;</strong>
 <span>States</span>
 </article>
 <article>
-<i>&#9638;</i>
+<i data-icon="offices"></i>
 <strong id="officeTotal">&mdash;</strong>
 <span>Office Locations</span>
 </article>
@@ -90,7 +90,13 @@ Total Vendors
 </section>
 </main>
 </div>
+<footer>
+<span class="version" id="versionBadge">Dashboard</span>
+<span>GFS Facility Hub</span>
+<a class="built-by" href="https://structurecollective.com" target="_blank" rel="noopener">Built by Structure Collective</a>
+</footer>
 <div id="loading" class="loading">Loading dashboard&hellip;</div>
+<script src="../icons.js"></script>
 <script src="../config.js"></script>
 <script src="app.js"></script>
 </body>

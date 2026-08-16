@@ -26,6 +26,8 @@
   let searchTimer = null;
 
   document.addEventListener('DOMContentLoaded', function () {
+    if (window.GFSIcons) GFSIcons.apply();
+
     if (!APP_CONFIG.apiUrl || APP_CONFIG.apiUrl.indexOf('REPLACE_WITH') !== -1) {
       showConfigWarning();
     }

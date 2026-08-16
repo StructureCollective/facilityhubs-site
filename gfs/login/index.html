@@ -7,12 +7,17 @@
 <title>Sign in | GFS Facility Hub</title>
 <style>
   :root {
-    --navy: #102f73;
-    --teal: #0aa39a;
-    --ink: #102349;
-    --muted: #677086;
-    --line: #e2e6ed;
-    --bg: #f7f8fb;
+    --navy: #0d2b5c;
+    --navy-dark: #081c3f;
+    --teal: #0a7f87;
+    --gold: #a9782c;
+    --gold-light: #c99b4a;
+    --ink: #12192b;
+    --muted: #5b6478;
+    --line: #d7dbe3;
+    --line-strong: #c3c9d4;
+    --bg: #f5f6f9;
+    --font-head: Georgia, 'Times New Roman', serif;
   }
   * { box-sizing: border-box; }
   body {
@@ -30,9 +35,10 @@
     margin: 24px;
     padding: 40px 36px;
     background: #fff;
-    border: 1px solid var(--line);
-    border-radius: 14px;
-    box-shadow: 0 20px 50px rgba(16, 35, 73, .08);
+    border: 1px solid var(--line-strong);
+    border-top: 4px solid var(--navy);
+    border-radius: 10px;
+    box-shadow: 0 20px 50px rgba(9, 20, 46, .12);
     text-align: center;
   }
   .brand-logo {
@@ -54,7 +60,9 @@
     margin-top: 2px;
   }
   h1 {
-    font-size: 1.3rem;
+    font-family: var(--font-head);
+    font-weight: 700;
+    font-size: 1.4rem;
     margin: 0 0 6px;
   }
   p.lead {
@@ -82,6 +90,18 @@
     margin-top: 22px;
     font-size: .76rem;
     color: var(--muted);
+  }
+  .built-by {
+    display: inline-block;
+    margin-top: 6px;
+    color: #8b95ab;
+    font-size: .74rem;
+    font-weight: 600;
+    text-decoration: none;
+  }
+  .built-by:hover {
+    color: var(--navy);
+    text-decoration: underline;
   }
   [hidden] { display: none !important; }
 </style>
@@ -112,7 +132,10 @@
       Check your connection and reload the page.
     </div>
 
-    <footer>GFS Facility Hub &middot; Access is restricted to authorized accounts</footer>
+    <footer>
+      GFS Facility Hub &middot; Access is restricted to authorized accounts<br>
+      <a class="built-by" href="https://structurecollective.com" target="_blank" rel="noopener">Built by Structure Collective</a>
+    </footer>
   </div>
 
   <script src="https://accounts.google.com/gsi/client" async defer></script>
