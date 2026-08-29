@@ -1,0 +1,18 @@
+{
+  "name": "legacy-property-hub-worker",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "db:migrate:local": "wrangler d1 execute legacy_property_hub_db --local --file=./schema.sql",
+    "db:migrate:remote": "wrangler d1 execute legacy_property_hub_db --remote --file=./schema.sql"
+  },
+  "devDependencies": {
+    "wrangler": "^3.90.0"
+  },
+  "dependencies": {
+    "jose": "^5.9.6",
+    "stripe": "^17.3.1"
+  }
+}

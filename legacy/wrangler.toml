@@ -1,0 +1,26 @@
+name = "legacy-property-hub"
+main = "src/index.js"
+compatibility_date = "2026-08-28"
+
+# Gives you an instant https://legacy-property-hub.<your-subdomain>.workers.dev
+# preview URL on every deploy, independent of the facilityhubs.com route below
+# (handy while previewing, or if that route fails because the logged-in
+# Cloudflare account does not manage the facilityhubs.com zone yet).
+workers_dev = true
+
+[assets]
+directory = "./public"
+binding = "ASSETS"
+run_worker_first = ["/legacy/api/*"]
+
+[[d1_databases]]
+binding = "DB"
+database_name = "legacy_property_hub_db"
+database_id = "e9fba21e-6e1f-4c5c-a8cb-29d760252d3d"
+
+[[routes]]
+pattern = "facilityhubs.com/legacy*"
+zone_name = "facilityhubs.com"
+
+# Real secrets (STRIPE_SECRET_KEY, STRIPE_WEBHOOK_SECRET) are set with
+# `wrangler secret put`, never written here.
