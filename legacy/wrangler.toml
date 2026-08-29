@@ -1,8 +1,8 @@
-name = "legacy-property-hub"
+name = "facilityhubs-site-legacy"
 main = "src/index.js"
 compatibility_date = "2026-08-28"
 
-# Gives you an instant https://legacy-property-hub.<your-subdomain>.workers.dev
+# Gives you an instant https://facilityhubs-site-legacy.<your-subdomain>.workers.dev
 # preview URL on every deploy, independent of the facilityhubs.com route below
 # (handy while previewing, or if that route fails because the logged-in
 # Cloudflare account does not manage the facilityhubs.com zone yet).
