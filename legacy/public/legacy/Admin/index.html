@@ -13,30 +13,41 @@
   #tenantDetail { display: none; }
   #tenantDetail.open { display: block; }
   .backlink { display: inline-block; margin-bottom: 14px; font-size: .84rem; color: var(--navy); cursor: pointer; font-weight: 700; }
+  .detail-tabs { display: flex; gap: 8px; margin-bottom: 16px; }
+  .detail-tabs button {
+    background: #fff; border: 1px solid var(--line-strong); border-radius: 999px; padding: 8px 16px;
+    font-size: .82rem; font-weight: 700; color: var(--muted); cursor: pointer;
+  }
+  .detail-tabs button.active { background: var(--navy); color: #fff; border-color: var(--navy); }
 </style>
 </head>
 <body>
-<div id="app" class="shell">
-<aside>
-<div class="brand">
+<div id="app" class="topbar-shell">
+<div class="topbar">
 <img src="/assets/legacy-logo.png" alt="Legacy Property Hub">
-<small>LEGACY PROPERTY HUB</small>
+<span class="word">LEGACY PROPERTY HUB</span>
+</div>
+<div class="shell">
+<aside>
+<div class="greeting">
+<p class="hi">Admin</p>
+<p class="sub">Property Hub</p>
 </div>
 <nav>
-<a class="active" aria-current="page">Admin</a>
-<a href="../Dashboard/">Dashboard</a>
-<a href="/"><span>All Hubs</span></a>
+<a class="active" aria-current="page">Tenants</a>
+<div class="divider"></div>
+<a href="/">All Hubs</a>
 </nav>
 </aside>
 <main>
 <div id="tenantList">
 <header class="page-header">
 <h1>Tenants</h1>
-<p>Upcoming due dates and payment status across all tenants.</p>
+<p>Rent, due dates, and payment status across all tenants.</p>
 </header>
 <div id="apiNotice" class="notice error" hidden></div>
 <table>
-<thead><tr><th>Tenant</th><th>Unit</th><th>Rent</th><th>Next due</th><th>Last paid</th></tr></thead>
+<thead><tr><th>Tenant</th><th>Address</th><th>Rent</th><th>Next due</th><th>Last paid</th></tr></thead>
 <tbody id="tenantBody"><tr><td colspan="5">Loading&hellip;</td></tr></tbody>
 </table>
 </div>
@@ -47,16 +58,23 @@
 <h1 id="detailName">&nbsp;</h1>
 <p id="detailUnit"></p>
 </header>
-<table>
+<div class="detail-tabs">
+<button class="active" id="tabPayments">Payments</button>
+<button id="tabMaintenance">Maintenance Requests</button>
+</div>
+<table id="paymentsTable">
 <thead><tr><th>Period</th><th>Amount</th><th>Status</th><th>Date</th></tr></thead>
 <tbody id="detailBody"><tr><td colspan="4">Loading&hellip;</td></tr></tbody>
+</table>
+<table id="maintenanceTable" hidden>
+<thead><tr><th>Description</th><th>Status</th><th>Submitted</th></tr></thead>
+<tbody id="maintenanceBody"><tr><td colspan="3">Loading&hellip;</td></tr></tbody>
 </table>
 </div>
 </main>
 </div>
+</div>
 
-<script src="../auth-config.js"></script>
-<script src="../auth.js"></script>
 <script src="app.js"></script>
 </body>
 </html>

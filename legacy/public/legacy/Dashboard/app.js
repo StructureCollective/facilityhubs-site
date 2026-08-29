@@ -1,10 +1,7 @@
 /*
- * Tenant dashboard -- TEMPORARY no-auth mode (see src/index.js header).
- * Which tenant to show comes from ?tenant_id=N in the URL instead of a
- * signed-in session. With no tenant_id, this shows a picker (pulled from
- * the open tenant list) so you can preview any tenant's view -- that
- * picker should go away once sign-in comes back and this reads the
- * signed-in tenant directly instead.
+ * Tenant dashboard overview -- TEMPORARY no-auth mode (see src/index.js
+ * header). Which tenant to show comes from ?tenant_id=N in the URL
+ * instead of a signed-in session.
  */
 (function () {
   const $ = function (id) { return document.getElementById(id); };
@@ -28,7 +25,6 @@
 
   document.addEventListener('DOMContentLoaded', function () {
     const tenantId = new URLSearchParams(location.search).get('tenant_id');
-
     if (!tenantId) {
       showPicker();
       return;
@@ -42,29 +38,16 @@
           return;
         }
         render(res.data, tenantId);
+        return fetch('/legacy/api/tenants/' + encodeURIComponent(tenantId) + '/maintenance')
+          .then(function (r) { return r.json(); })
+          .then(function (d) {
+            const open = (d.requests || []).filter(function (r) { return r.status === 'open'; }).length;
+            $('openCount').textContent = open;
+          });
       })
       .catch(function () {
         $('loadingMsg').textContent = 'Could not load this dashboard. Please reload the page.';
       });
-
-    $('payBtn').addEventListener('click', function () {
-      $('payBtn').disabled = true;
-      $('payStatus').textContent = 'Redirecting to secure checkout…';
-      fetch('/legacy/api/tenants/' + encodeURIComponent(tenantId) + '/pay', { method: 'POST' })
-        .then(function (r) { return r.json().then(function (d) { return { ok: r.ok, data: d }; }); })
-        .then(function (res) {
-          if (!res.ok || !res.data.url) {
-            $('payStatus').textContent = res.data.error || 'Could not start checkout.';
-            $('payBtn').disabled = false;
-            return;
-          }
-          location.href = res.data.url;
-        })
-        .catch(function () {
-          $('payStatus').textContent = 'Something went wrong. Please try again.';
-          $('payBtn').disabled = false;
-        });
-    });
   });
 
   function showPicker() {
@@ -75,7 +58,7 @@
         $('picker').hidden = false;
         const tenants = data.tenants || [];
         if (!tenants.length) {
-          $('pickerList').innerHTML = '<li>No tenants yet. Add one in D1 -- see worker/README.md.</li>';
+          $('pickerList').innerHTML = '<li>No tenants yet. Add one in D1 -- see legacy/README.md.</li>';
           return;
         }
         $('pickerList').innerHTML = tenants.map(function (t) {
@@ -90,32 +73,25 @@
 
   function render(data, tenantId) {
     const t = data.tenant;
-    $('greeting').textContent = t.fullName ? 'Hi, ' + t.fullName.split(' ')[0] : 'Your rent';
+    $('greeting').textContent = 'Hi, ' + (t.fullName ? t.fullName.split(' ')[0] : 'there');
     $('unitLabel').textContent = t.unitLabel || '';
-    $('rentAmount').textContent = money(t.rentAmountCents);
-    $('dueDate').textContent = fmtDate(t.nextDueDate);
 
-    const params = new URLSearchParams(location.search);
-    if (params.get('paid') === '1') {
-      $('dueSub').textContent = 'Payment received — thank you! It may take a minute to reflect below.';
-    } else if (params.get('canceled') === '1') {
-      $('dueSub').textContent = 'Checkout was canceled.';
+    let amount = t.rentAmountCents;
+    let lateNote = '';
+    if (t.lateFeeApplies) {
+      amount += t.lateFeeCents;
+      lateNote = ' — includes ' + money(t.lateFeeCents) + ' late fee';
     }
+    $('rentAmount').textContent = money(amount);
+    $('dueDate').textContent = fmtDate(t.nextDueDate);
+    $('lateNote').textContent = lateNote;
+    $('payLink').href = '../Payments/?tenant_id=' + tenantId;
 
-    renderHistory(data.payments || []);
+    const payments = data.payments || [];
+    const lastPaid = payments.find(function (p) { return p.status === 'succeeded'; });
+    $('lastPayment').textContent = lastPaid ? fmtDate(lastPaid.paid_at) : 'None yet';
+
     $('loadingMsg').hidden = true;
     $('app').hidden = false;
-  }
-
-  function renderHistory(payments) {
-    if (!payments.length) {
-      $('historyBody').innerHTML = '<tr><td colspan="4">No payments yet.</td></tr>';
-      return;
-    }
-    $('historyBody').innerHTML = payments.map(function (p) {
-      return '<tr><td>' + esc(p.period_label || '') + '</td><td>' + money(p.amount_cents) +
-        '</td><td><span class="pill ' + esc(p.status) + '">' + esc(p.status) + '</span></td><td>' +
-        fmtDate(p.paid_at || p.created_at) + '</td></tr>';
-    }).join('');
   }
 })();

@@ -2,19 +2,106 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="refresh" content="0; url=/legacy/Dashboard/">
-<link rel="canonical" href="/legacy/Dashboard/">
+<meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Legacy Property Hub</title>
-<meta name="description" content="View your rent due date, payment history, and make a payment.">
+<meta name="description" content="Property with Purpose. Value for Generations.">
 <link rel="icon" type="image/png" href="/assets/facility-hubs-favicon.png">
-<meta name="theme-color" content="#0d2b5c">
+<meta name="theme-color" content="#f4f5f7">
 <style>
-  body { margin:0; min-height:100vh; display:grid; place-items:center; background:#fbfcfe; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif; color:#0d1b3b; }
-  a { color:#0d2b5c; font-weight:700; text-decoration:none; }
+  :root {
+    --navy: #0d2b5c;
+    --gold: #a9782c;
+    --gold-light: #c99b4a;
+    --ink: #12192b;
+    --muted: #5b6478;
+    --line: #d7dbe3;
+    --font-head: Georgia, 'Times New Roman', serif;
+    --font-body: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(180deg, #f7f8fa 0%, #eceef2 100%);
+    font-family: var(--font-body);
+    color: var(--ink);
+    padding: 40px 24px;
+  }
+  .card {
+    width: 100%;
+    max-width: 420px;
+    background: #fff;
+    border: 1px solid var(--line);
+    border-radius: 18px;
+    box-shadow: 0 24px 60px rgba(13, 27, 58, .10);
+    padding: 48px 40px 36px;
+    text-align: center;
+  }
+  .logo { height: 76px; margin: 0 auto 22px; display: block; }
+  h1 {
+    font-family: var(--font-head);
+    font-weight: 700;
+    font-size: 1.7rem;
+    margin: 0 0 10px;
+    color: var(--navy);
+  }
+  .slogan {
+    font-family: var(--font-head);
+    font-style: italic;
+    color: var(--muted);
+    font-size: 1rem;
+    margin: 0 0 34px;
+    line-height: 1.5;
+  }
+  .actions { display: flex; flex-direction: column; gap: 12px; }
+  .btn {
+    display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+    border-radius: 999px; padding: 14px 24px; font-weight: 700; font-size: .95rem;
+    text-decoration: none; border: none; cursor: pointer; font-family: inherit;
+  }
+  .btn.primary { background: var(--navy); color: #fff; }
+  .btn.primary:hover { background: #081c3f; }
+  .btn.secondary { background: #fff; color: var(--navy); border: 1.5px solid var(--line); }
+  .btn.secondary:hover { border-color: var(--navy); }
+  footer {
+    margin-top: 32px;
+    font-size: .76rem;
+    color: #8b95ab;
+  }
+  .built-by {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    color: #8b95ab;
+    font-size: .78rem;
+    font-weight: 600;
+    text-decoration: none;
+  }
+  .built-by img { display: block; border-radius: 3px; }
+  .built-by:hover { color: var(--navy); text-decoration: underline; }
 </style>
-<script>window.location.replace('/legacy/Dashboard/');</script>
 </head>
 <body>
-  <p>Redirecting to the <a href="/legacy/Dashboard/">Legacy Property Hub dashboard</a>&hellip;</p>
+  <div class="card">
+    <img class="logo" src="/assets/legacy-logo.png" alt="Legacy Property Hub">
+    <h1>Legacy Property Hub</h1>
+    <p class="slogan">Property with Purpose.<br>Value for Generations.</p>
+
+    <div class="actions">
+      <a class="btn primary" href="Dashboard/">Sign In</a>
+      <a class="btn secondary" href="mailto:thenonamejames@gmail.com">Contact Us</a>
+    </div>
+  </div>
+
+  <footer>
+    <a class="built-by" href="https://structurecollective.com" target="_blank" rel="noopener">
+      <img src="/assets/structure-collective-icon.png" alt="" width="16" height="16">
+      Built by Structure Collective
+    </a>
+  </footer>
 </body>
 </html>

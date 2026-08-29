@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Legacy Property Hub | Maintenance Requests</title>
+<link rel="icon" type="image/png" href="/assets/facility-hubs-favicon.png">
+<meta name="theme-color" content="#0d2b5c">
+<link rel="stylesheet" href="../style.css">
+</head>
+<body>
+<div id="loadingMsg" class="loading">Loading&hellip;</div>
+
+<div id="app" hidden>
+<div class="topbar">
+<img src="/assets/legacy-logo.png" alt="Legacy Property Hub">
+<span class="word">LEGACY PROPERTY HUB</span>
+</div>
+<div class="shell">
+<aside>
+<div class="greeting">
+<p class="hi" id="greeting">Hi</p>
+<p class="sub" id="unitLabel"></p>
+</div>
+<nav>
+<a href="../Dashboard/">Dashboard</a>
+<a class="active" aria-current="page">Maintenance Requests</a>
+<a href="../Payments/">Payments</a>
+<div class="divider"></div>
+<a href="/">All Hubs</a>
+</nav>
+</aside>
+<main>
+<header class="page-header">
+<h1>Maintenance Requests</h1>
+<p>Let your property manager know about anything that needs attention.</p>
+</header>
+
+<div id="apiNotice" class="notice error" hidden></div>
+
+<section>
+<textarea id="description" rows="4" placeholder="Describe the issue (e.g. 'Kitchen faucet is leaking')"></textarea>
+<div style="margin-top:10px;">
+<button class="btn gold" id="submitBtn">Submit request</button>
+<span id="submitStatus" style="margin-left:12px;color:var(--muted);font-size:.86rem;"></span>
+</div>
+</section>
+
+<section>
+<h2 style="margin-bottom:12px;">Your requests</h2>
+<table>
+<thead><tr><th>Description</th><th>Status</th><th>Submitted</th></tr></thead>
+<tbody id="requestBody"><tr><td colspan="3">Loading&hellip;</td></tr></tbody>
+</table>
+</section>
+</main>
+</div>
+</div>
+
+<script src="app.js"></script>
+</body>
+</html>

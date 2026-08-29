@@ -7,56 +7,67 @@
 <link rel="icon" type="image/png" href="/assets/facility-hubs-favicon.png">
 <meta name="theme-color" content="#0d2b5c">
 <link rel="stylesheet" href="../style.css">
+<style>
+.hero {
+  background: linear-gradient(135deg, var(--navy), var(--navy-dark));
+  color: #fff; border-radius: 16px; padding: 28px 32px; margin-bottom: 24px;
+  display: flex; align-items: center; justify-content: space-between; gap: 24px; flex-wrap: wrap;
+}
+.hero .label { font-size: .78rem; text-transform: uppercase; letter-spacing: .06em; opacity: .7; font-weight: 700; }
+.hero .amount { font-family: var(--font-head); font-size: 2.6rem; margin: 6px 0 4px; }
+.hero .due { font-size: .88rem; opacity: .85; }
+.hero .btn.gold { flex-shrink: 0; }
+.mini-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; }
+</style>
 </head>
 <body>
 <div id="loadingMsg" class="loading">Loading&hellip;</div>
-<div id="app" class="shell" hidden>
-<aside>
-<div class="brand">
+
+<div id="app" hidden>
+<div class="topbar">
 <img src="/assets/legacy-logo.png" alt="Legacy Property Hub">
-<small>LEGACY PROPERTY HUB</small>
+<span class="word">LEGACY PROPERTY HUB</span>
+</div>
+<div class="shell">
+<aside>
+<div class="greeting">
+<p class="hi" id="greeting">Hi</p>
+<p class="sub" id="unitLabel"></p>
 </div>
 <nav>
 <a class="active" aria-current="page">Dashboard</a>
-<a href="../Admin/">Admin</a>
-<a href="/"><span>All Hubs</span></a>
+<a href="../Maintenance/">Maintenance Requests</a>
+<a href="../Payments/">Payments</a>
+<div class="divider"></div>
+<a href="/">All Hubs</a>
 </nav>
 </aside>
 <main>
-<header class="page-header">
-<h1 id="greeting">Your rent</h1>
-<p id="unitLabel"></p>
-</header>
-
 <div id="apiNotice" class="notice error" hidden></div>
 
-<section class="cards">
-<div class="card">
-<div class="label">Rent amount</div>
-<div class="value" id="rentAmount">&mdash;</div>
+<div class="hero">
+<div>
+<div class="label">Amount due</div>
+<div class="amount" id="rentAmount">&mdash;</div>
+<div class="due">Due <span id="dueDate">&mdash;</span><span id="lateNote"></span></div>
 </div>
-<div class="card">
-<div class="label">Next due date</div>
-<div class="value" id="dueDate">&mdash;</div>
-<div class="sub" id="dueSub"></div>
+<a class="btn gold" href="../Payments/" id="payLink">Pay now</a>
 </div>
-<div class="card">
-<div class="label">Pay now</div>
-<div style="margin-top:10px;">
-<button class="btn gold" id="payBtn">Pay rent</button>
-</div>
-<div class="sub" id="payStatus"></div>
-</div>
-</section>
 
-<section>
-<h2 style="margin-bottom:12px;">Payment history</h2>
-<table>
-<thead><tr><th>Period</th><th>Amount</th><th>Status</th><th>Date</th></tr></thead>
-<tbody id="historyBody"><tr><td colspan="4">Loading&hellip;</td></tr></tbody>
-</table>
+<section class="mini-row">
+<div class="card">
+<div class="label">Open maintenance requests</div>
+<div class="value" id="openCount">&mdash;</div>
+<div class="sub"><a href="../Maintenance/">Request maintenance &rarr;</a></div>
+</div>
+<div class="card">
+<div class="label">Last payment</div>
+<div class="value" id="lastPayment">&mdash;</div>
+<div class="sub"><a href="../Payments/">View payment history &rarr;</a></div>
+</div>
 </section>
 </main>
+</div>
 </div>
 
 <div id="picker" class="loading" hidden>

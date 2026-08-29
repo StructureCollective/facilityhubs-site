@@ -6,6 +6,7 @@
  */
 (function () {
   const $ = function (id) { return document.getElementById(id); };
+  let currentTenantId = null;
 
   function money(cents) {
     return (cents / 100).toLocaleString('en-US', { style: 'currency', currency: 'USD' });
@@ -26,6 +27,8 @@
 
   document.addEventListener('DOMContentLoaded', function () {
     $('backLink').addEventListener('click', showList);
+    $('tabPayments').addEventListener('click', function () { showTab('payments'); });
+    $('tabMaintenance').addEventListener('click', function () { showTab('maintenance'); });
     loadTenants();
   });
 
@@ -61,21 +64,34 @@
   }
 
   function showDetail(id, name, unit) {
-    $('tenantList').style.display = 'none';
+    currentTenantId = id;
+    document.getElementById('tenantList').style.display = 'none';
     $('tenantDetail').className = 'open';
     $('detailName').textContent = name;
     $('detailUnit').textContent = unit;
-    $('detailBody').innerHTML = '<tr><td colspan="4">Loading&hellip;</td></tr>';
+    showTab('payments');
+  }
 
-    fetch('/legacy/api/tenants/' + id + '/payments')
+  function showTab(which) {
+    $('tabPayments').className = which === 'payments' ? 'active' : '';
+    $('tabMaintenance').className = which === 'maintenance' ? 'active' : '';
+    $('paymentsTable').hidden = which !== 'payments';
+    $('maintenanceTable').hidden = which !== 'maintenance';
+    if (which === 'payments') loadPayments();
+    else loadMaintenance();
+  }
+
+  function loadPayments() {
+    $('detailBody').innerHTML = '<tr><td colspan="4">Loading&hellip;</td></tr>';
+    fetch('/legacy/api/tenants/' + currentTenantId + '/payments')
       .then(function (r) { return r.json(); })
-      .then(function (data) { renderDetail(data.payments || []); })
+      .then(function (data) { renderPayments(data.payments || []); })
       .catch(function () {
         $('detailBody').innerHTML = '<tr><td colspan="4">Could not load payment history.</td></tr>';
       });
   }
 
-  function renderDetail(payments) {
+  function renderPayments(payments) {
     if (!payments.length) {
       $('detailBody').innerHTML = '<tr><td colspan="4">No payments yet.</td></tr>';
       return;
@@ -87,8 +103,29 @@
     }).join('');
   }
 
+  function loadMaintenance() {
+    $('maintenanceBody').innerHTML = '<tr><td colspan="3">Loading&hellip;</td></tr>';
+    fetch('/legacy/api/tenants/' + currentTenantId + '/maintenance')
+      .then(function (r) { return r.json(); })
+      .then(function (data) { renderMaintenance(data.requests || []); })
+      .catch(function () {
+        $('maintenanceBody').innerHTML = '<tr><td colspan="3">Could not load maintenance requests.</td></tr>';
+      });
+  }
+
+  function renderMaintenance(requests) {
+    if (!requests.length) {
+      $('maintenanceBody').innerHTML = '<tr><td colspan="3">No requests yet.</td></tr>';
+      return;
+    }
+    $('maintenanceBody').innerHTML = requests.map(function (r) {
+      return '<tr><td>' + esc(r.description) + '</td><td><span class="pill ' + esc(r.status) + '">' +
+        esc(r.status) + '</span></td><td>' + fmtDate(r.created_at) + '</td></tr>';
+    }).join('');
+  }
+
   function showList() {
     $('tenantDetail').className = '';
-    $('tenantList').style.display = '';
+    document.getElementById('tenantList').style.display = '';
   }
 })();

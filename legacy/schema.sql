@@ -9,6 +9,8 @@ CREATE TABLE IF NOT EXISTS tenants (
   unit_label TEXT,
   rent_amount_cents INTEGER NOT NULL,
   due_day INTEGER NOT NULL CHECK (due_day BETWEEN 1 AND 28),
+  late_fee_cents INTEGER NOT NULL DEFAULT 0,
+  late_fee_after_day INTEGER,
   active INTEGER NOT NULL DEFAULT 1,
   created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
@@ -26,3 +28,14 @@ CREATE TABLE IF NOT EXISTS payments (
 );
 
 CREATE INDEX IF NOT EXISTS idx_payments_tenant ON payments(tenant_id);
+
+CREATE TABLE IF NOT EXISTS maintenance_requests (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  tenant_id INTEGER NOT NULL REFERENCES tenants(id),
+  description TEXT NOT NULL,
+  status TEXT NOT NULL DEFAULT 'open',
+  created_at TEXT NOT NULL DEFAULT (datetime('now')),
+  updated_at TEXT
+);
+
+CREATE INDEX IF NOT EXISTS idx_maintenance_tenant ON maintenance_requests(tenant_id);
