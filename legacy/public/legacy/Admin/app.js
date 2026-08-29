@@ -64,7 +64,29 @@
     $('saveRentBtn').addEventListener('click', saveRentEdit);
     $('cancelRentBtn').addEventListener('click', closeRentEditor);
     $('addFeeBtn').addEventListener('click', addFee);
+    $('viewAsBtn').addEventListener('click', viewTenantPortal);
     loadTenants();
+  }
+
+  // Signs the browser in as this tenant (see /tenants/:id/view-as),
+  // stashing the admin's own session so the tenant-facing pages' "Back
+  // to Admin" button can restore it.
+  function viewTenantPortal() {
+    $('viewAsBtn').disabled = true;
+    fetch('/legacy/api/tenants/' + currentTenantId + '/view-as', { method: 'POST' })
+      .then(function (r) { return r.json().then(function (d) { return { ok: r.ok, data: d }; }); })
+      .then(function (res) {
+        if (!res.ok) {
+          $('viewAsBtn').disabled = false;
+          window.alert(res.data.error || 'Could not open the tenant portal.');
+          return;
+        }
+        location.href = '/legacy/Dashboard/';
+      })
+      .catch(function () {
+        $('viewAsBtn').disabled = false;
+        window.alert('Something went wrong. Please try again.');
+      });
   }
 
   function showTenantsView() {

@@ -40,6 +40,35 @@ h1, h2 { font-family: var(--font-head); font-weight: 700; margin: 0; }
 }
 .topbar img { height: 160px; display: block; }
 
+/* Shown only when an admin is previewing a tenant's own pages via
+   Admin's "View Tenant Portal" (see the impersonatedBy session claim
+   in src/index.js) -- inserted by each tenant page's app.js, not
+   present in the HTML by default. */
+.impersonation-banner {
+  background: var(--gold-strong);
+  color: #12192b;
+  padding: 10px 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  font-size: .86rem;
+  font-weight: 700;
+  flex-wrap: wrap;
+  text-align: center;
+}
+.impersonation-banner button {
+  background: var(--navy);
+  color: #fff;
+  border: none;
+  border-radius: 999px;
+  padding: 6px 16px;
+  font-weight: 700;
+  font-size: .8rem;
+  cursor: pointer;
+}
+.impersonation-banner button:hover { background: var(--navy-dark); }
+
 .shell { display: grid; grid-template-columns: 230px 1fr; min-height: calc(100vh - 163px); }
 
 aside { background: var(--navy); padding: 28px 16px; }

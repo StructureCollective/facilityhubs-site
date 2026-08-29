@@ -30,6 +30,21 @@
       .then(function () { location.href = '/legacy/'; });
   }
 
+  // Shown only when an admin is viewing this page through Admin's "View
+  // Tenant Portal" -- lets them get back to Admin without signing out.
+  function showImpersonationBanner(tenantName) {
+    var bar = document.createElement('div');
+    bar.className = 'impersonation-banner';
+    bar.innerHTML = 'Viewing as <strong>' + esc(tenantName) + '</strong> (admin preview) ' +
+      '<button type="button" id="backToAdminBtn">Back to Admin</button>';
+    document.querySelector('.topbar').insertAdjacentElement('afterend', bar);
+    $('backToAdminBtn').addEventListener('click', function () {
+      fetch('/legacy/api/auth/return-to-admin', { method: 'POST' })
+        .then(function (r) { location.href = r.ok ? '/legacy/Admin/' : '/legacy/'; })
+        .catch(function () { location.href = '/legacy/'; });
+    });
+  }
+
   document.addEventListener('DOMContentLoaded', function () {
     $('signOutLink').addEventListener('click', signOut);
 
@@ -44,6 +59,7 @@
           $('loadingMsg').textContent = 'Could not load this page. Please reload.';
           return;
         }
+        if (res.data.impersonating) showImpersonationBanner(res.data.tenant.fullName);
         const t = res.data.tenant;
         $('greeting').textContent = 'Hi, ' + (t.fullName ? t.fullName.split(' ')[0] : 'there');
         $('unitLabel').innerHTML = fmtAddress(t.unitLabel);

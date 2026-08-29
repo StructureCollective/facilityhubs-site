@@ -28,10 +28,19 @@ import Stripe from 'stripe';
 import { SignJWT, jwtVerify } from 'jose';
 
 function json(data, status = 200, extraHeaders = {}) {
-  return new Response(JSON.stringify(data), {
-    status,
-    headers: { 'content-type': 'application/json', ...extraHeaders },
-  });
+  const headers = new Headers({ 'content-type': 'application/json' });
+  // A plain object can only hold one value per key, but a response
+  // sometimes needs two Set-Cookie headers at once (e.g. swapping the
+  // session cookie while also stashing one to restore later) -- pass an
+  // array for those, everything else stays a single string as before.
+  for (const [key, value] of Object.entries(extraHeaders)) {
+    if (Array.isArray(value)) {
+      for (const v of value) headers.append(key, v);
+    } else {
+      headers.append(key, value);
+    }
+  }
+  return new Response(JSON.stringify(data), { status, headers });
 }
 
 function escapeHtml(v) {
@@ -113,6 +122,11 @@ function emailButton(url, label) {
 // ---------------------------------------------------------------------
 
 const SESSION_COOKIE = 'legacy_session';
+// Holds the admin's own session token while they're viewing a tenant's
+// portal (see /tenants/:id/view-as and /auth/return-to-admin below), so
+// "Back to Admin" can restore it exactly rather than requiring another
+// sign-in.
+const ADMIN_RETURN_COOKIE = 'legacy_admin_return';
 const SESSION_MAX_AGE_SECONDS = 60 * 60 * 24 * 30; // 30 days
 const LOGIN_TOKEN_TTL_MS = 15 * 60 * 1000; // 15 minutes
 
@@ -130,10 +144,13 @@ function sessionSecretKey(env) {
 }
 
 // `type` is 'tenant' or 'admin'; `subject` is the tenant id (string) or
-// the admin's email.
-async function createSessionToken(env, { type, subject }) {
+// the admin's email. `impersonatedBy` (an admin's email) is set only
+// when this is a tenant session an admin created via "View Tenant
+// Portal" -- it's how the tenant-facing pages know to show a "Back to
+// Admin" banner instead of treating this as a real tenant sign-in.
+async function createSessionToken(env, { type, subject, impersonatedBy }) {
   const key = sessionSecretKey(env);
-  return new SignJWT({ type, subject })
+  return new SignJWT({ type, subject, ...(impersonatedBy ? { impersonatedBy } : {}) })
     .setProtectedHeader({ alg: 'HS256' })
     .setIssuedAt()
     .setExpirationTime(`${SESSION_MAX_AGE_SECONDS}s`)
@@ -146,6 +163,14 @@ function sessionCookieHeader(token) {
 
 function clearSessionCookieHeader() {
   return `${SESSION_COOKIE}=; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=0`;
+}
+
+function adminReturnCookieHeader(token) {
+  return `${ADMIN_RETURN_COOKIE}=${token}; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=${SESSION_MAX_AGE_SECONDS}`;
+}
+
+function clearAdminReturnCookieHeader() {
+  return `${ADMIN_RETURN_COOKIE}=; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=0`;
 }
 
 function readCookie(request, name) {
@@ -169,7 +194,7 @@ async function getSession(request, env) {
     const key = sessionSecretKey(env);
     const { payload } = await jwtVerify(token, key);
     if (!payload || !payload.type || payload.subject == null) return null;
-    return { type: payload.type, subject: payload.subject };
+    return { type: payload.type, subject: payload.subject, impersonatedBy: payload.impersonatedBy || null };
   } catch (err) {
     return null;
   }
@@ -413,7 +438,32 @@ ${emailButton(link, 'Sign in to Legacy Property Hub')}
   }
 
   if (path === '/auth/logout' && request.method === 'POST') {
-    return json({ ok: true }, 200, { 'Set-Cookie': clearSessionCookieHeader() });
+    return json({ ok: true }, 200, {
+      'Set-Cookie': [clearSessionCookieHeader(), clearAdminReturnCookieHeader()],
+    });
+  }
+
+  // Ends an admin's "View Tenant Portal" preview -- swaps the session
+  // cookie back to the admin session stashed by /tenants/:id/view-as,
+  // after re-verifying it's still a valid, unexpired admin session
+  // rather than trusting the stashed cookie blindly.
+  if (path === '/auth/return-to-admin' && request.method === 'POST') {
+    const stashed = readCookie(request, ADMIN_RETURN_COOKIE);
+    if (!stashed) return json({ error: 'No admin session to return to' }, 400);
+
+    try {
+      const key = sessionSecretKey(env);
+      const { payload } = await jwtVerify(stashed, key);
+      if (!payload || payload.type !== 'admin') throw new Error('not an admin session');
+    } catch (err) {
+      return json({ error: 'Your admin session has expired. Please sign in again.' }, 401, {
+        'Set-Cookie': [clearSessionCookieHeader(), clearAdminReturnCookieHeader()],
+      });
+    }
+
+    return json({ ok: true }, 200, {
+      'Set-Cookie': [sessionCookieHeader(stashed), clearAdminReturnCookieHeader()],
+    });
   }
 
   if (path === '/me' && request.method === 'GET') {
@@ -569,6 +619,31 @@ ${emailButton(link, 'Sign in to Legacy Property Hub')}
     return json({ ok: true });
   }
 
+  // Lets an admin see a tenant's own portal (Dashboard/Payments/
+  // Maintenance/Documents) exactly as that tenant sees it -- there's no
+  // password to borrow, so this issues a real tenant session for them,
+  // while stashing the admin's own session in a second cookie so
+  // /auth/return-to-admin ("Back to Admin" in the tenant-facing pages)
+  // can restore it precisely, without another sign-in.
+  const viewAsMatch = path.match(/^\/tenants\/(\d+)\/view-as$/);
+  if (viewAsMatch && request.method === 'POST') {
+    const session = await getSession(request, env);
+    if (!requireAdmin(session)) return json({ error: 'Forbidden' }, 403);
+
+    const tenantId = viewAsMatch[1];
+    const tenant = await loadTenant(env, tenantId);
+    if (!tenant) return json({ error: 'Tenant not found' }, 404);
+
+    const adminToken = readCookie(request, SESSION_COOKIE);
+    const tenantToken = await createSessionToken(env, {
+      type: 'tenant', subject: tenantId, impersonatedBy: session.subject,
+    });
+
+    return json({ ok: true }, 200, {
+      'Set-Cookie': [sessionCookieHeader(tenantToken), adminReturnCookieHeader(adminToken)],
+    });
+  }
+
   // ---- Tenant-scoped (own tenant, or admin) ----
 
   const tenantMatch = path.match(/^\/tenants\/(\d+|me)$/);
@@ -588,7 +663,11 @@ ${emailButton(link, 'Sign in to Legacy Property Hub')}
       `SELECT id, amount_cents, status, period_label, method, receipt_url, created_at, paid_at
        FROM payments WHERE tenant_id = ? ORDER BY COALESCE(paid_at, created_at) DESC`
     ).bind(tenant.id).all();
-    return json({ tenant: tenantSummary(tenant, late, extraFees), payments: payments.results });
+    return json({
+      tenant: tenantSummary(tenant, late, extraFees),
+      payments: payments.results,
+      impersonating: !!access.session.impersonatedBy,
+    });
   }
 
   const paymentsMatch = path.match(/^\/tenants\/(\d+|me)\/payments$/);

@@ -65,6 +65,7 @@
   .toolbar input[type="text"], .toolbar select { width: auto; }
   .toolbar input[type="text"] { min-width: 240px; }
 
+  .detail-actions { display: flex; gap: 10px; margin-bottom: 20px; flex-wrap: wrap; }
   .rent-edit { margin-bottom: 20px; }
   .rent-edit-form {
     background: #fff; border: 1px solid var(--line-strong); border-radius: 12px;
@@ -145,8 +146,11 @@
 <h1 id="detailName">&nbsp;</h1>
 <p id="detailUnit"></p>
 </header>
-<div class="rent-edit">
+<div class="detail-actions">
 <button class="btn" id="editRentBtn">Edit Rent &amp; Fees</button>
+<button class="btn" id="viewAsBtn" type="button" style="background:#fff;color:var(--navy);border:1.5px solid var(--line-strong);">View Tenant Portal</button>
+</div>
+<div class="rent-edit">
 <div id="rentEditForm" class="rent-edit-form" hidden>
 <div class="field-row">
 <div class="field"><label>Rent amount ($)</label><input type="number" id="rentAmountInput" step="0.01" min="0"></div>
