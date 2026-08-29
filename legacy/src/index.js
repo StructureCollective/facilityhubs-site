@@ -846,24 +846,19 @@ async function handleApi(request, env, url) {
       description: descriptionParts.join(' + '),
       // fee_ids lets the webhook mark exactly the fees included in THIS
       // charge as applied once it succeeds -- not any fee added after.
+      // rent_amount_cents/late_fee_cents ride along too because no
+      // payments row exists yet to hold them -- the webhook creates the
+      // row (see handleStripeWebhook) only once the payment actually
+      // succeeds, so there's nothing left behind to clean up if the
+      // tenant abandons the attempt.
       metadata: {
         tenant_id: String(tenant.id),
         period_label: periodLabel,
         fee_ids: extraFees.map((f) => f.id).join(','),
+        rent_amount_cents: String(tenant.rent_amount_cents),
+        late_fee_cents: String(late.lateFeeApplies ? late.lateFeeCents : 0),
       },
     });
-
-    await env.DB.prepare(
-      `INSERT INTO payments (tenant_id, amount_cents, status, stripe_payment_intent_id, period_label, rent_amount_cents, late_fee_cents)
-       VALUES (?, ?, 'pending', ?, ?, ?, ?)`
-    ).bind(
-      tenant.id,
-      amountCents,
-      paymentIntent.id,
-      periodLabel,
-      tenant.rent_amount_cents,
-      late.lateFeeApplies ? late.lateFeeCents : 0
-    ).run();
 
     return json({ clientSecret: paymentIntent.client_secret });
   }
@@ -921,14 +916,39 @@ async function handleStripeWebhook(request, env) {
 
   if (event.type === 'payment_intent.succeeded') {
     const pi = event.data.object;
+    const meta = pi.metadata || {};
+    const tenantId = meta.tenant_id ? Number(meta.tenant_id) : null;
+
+    if (!tenantId) {
+      console.error('payment_intent.succeeded missing tenant_id metadata', pi.id);
+      return json({ received: true });
+    }
 
     // Stripe's hosted, downloadable PDF receipt for this charge -- not
     // present on the PaymentIntent itself, only on its Charge.
     const receiptUrl = await fetchReceiptUrl(env, pi.latest_charge);
 
-    await env.DB.prepare(
-      `UPDATE payments SET status = 'succeeded', paid_at = datetime('now'), receipt_url = ? WHERE stripe_payment_intent_id = ?`
-    ).bind(receiptUrl, pi.id).run();
+    // The payments row is created HERE, on success -- not back when the
+    // PaymentIntent was first created (see the /pay route above). That's
+    // deliberate: there's no more "pending" row for an abandoned or
+    // never-finished attempt to leave behind, so nothing needs sweeping
+    // up later. Stripe can redeliver this webhook, so INSERT OR IGNORE
+    // plus the unique index on stripe_payment_intent_id (schema.sql)
+    // makes a redelivery a no-op instead of a duplicate payment.
+    const insert = await env.DB.prepare(
+      `INSERT OR IGNORE INTO payments
+         (tenant_id, amount_cents, status, period_label, rent_amount_cents, late_fee_cents, stripe_payment_intent_id, receipt_url, paid_at)
+       VALUES (?, ?, 'succeeded', ?, ?, ?, ?, ?, datetime('now'))`
+    ).bind(
+      tenantId,
+      pi.amount,
+      meta.period_label || null,
+      meta.rent_amount_cents != null ? Number(meta.rent_amount_cents) : null,
+      meta.late_fee_cents != null ? Number(meta.late_fee_cents) : null,
+      pi.id,
+      receiptUrl
+    ).run();
+    const isNewPayment = !!(insert.meta && insert.meta.changes > 0);
 
     const paid = await env.DB.prepare(
       `SELECT p.id, p.tenant_id, p.amount_cents, p.period_label, p.receipt_url, t.email, t.full_name, t.unit_label
@@ -936,105 +956,46 @@ async function handleStripeWebhook(request, env) {
        WHERE p.stripe_payment_intent_id = ?`
     ).bind(pi.id).first();
 
-    // Mark exactly the one-time fees that were included in this charge
-    // (recorded on the PaymentIntent's metadata when it was created) as
-    // applied, now that it's actually succeeded -- never before then, so
-    // an abandoned/failed attempt leaves the fee pending for next time.
-    const feeIds = (pi.metadata && pi.metadata.fee_ids)
-      ? pi.metadata.fee_ids.split(',').map((s) => s.trim()).filter(Boolean)
-      : [];
-    if (paid && feeIds.length) {
+    // Only act on a genuinely new payment -- a redelivered webhook for
+    // one already recorded would otherwise re-apply fees (harmless,
+    // since that update is itself guarded on status = 'pending') and
+    // re-send both emails (not harmless).
+    if (paid && isNewPayment) {
+      // Mark exactly the one-time fees that were included in this
+      // charge (recorded on the PaymentIntent's metadata when it was
+      // created) as applied, now that it's actually succeeded -- never
+      // before then, so an abandoned attempt leaves the fee pending for
+      // next time.
+      const feeIds = meta.fee_ids
+        ? meta.fee_ids.split(',').map((s) => s.trim()).filter(Boolean)
+        : [];
       for (const feeId of feeIds) {
         await env.DB.prepare(
           `UPDATE tenant_fees SET status = 'applied', applied_at = datetime('now'), applied_payment_id = ?
            WHERE id = ? AND status = 'pending'`
         ).bind(paid.id, feeId).run();
       }
-    }
 
-    if (paid && paid.email) {
-      await sendEmail(env, {
-        to: paid.email,
-        subject: 'Payment received - Legacy Property Hub',
-        html: paymentReceivedEmailBody(paid),
-      });
-    }
+      if (paid.email) {
+        await sendEmail(env, {
+          to: paid.email,
+          subject: 'Payment received - Legacy Property Hub',
+          html: paymentReceivedEmailBody(paid),
+        });
+      }
 
-    // Admin heads-up -- separate from the tenant confirmation above, and
-    // not gated on paid.email since it doesn't need the tenant's address.
-    if (paid) {
+      // Admin heads-up -- separate from the tenant confirmation above,
+      // and not gated on paid.email since it doesn't need the tenant's
+      // address.
       await sendEmail(env, {
         to: 'legacy@facilityhubs.com',
         subject: `Payment received - ${paid.unit_label || paid.full_name || 'Tenant'}`,
         html: paymentReceivedAdminEmailBody(paid),
       });
     }
-  } else if (event.type === 'payment_intent.payment_failed' || event.type === 'payment_intent.canceled') {
-    const pi = event.data.object;
-    await env.DB.prepare(
-      `UPDATE payments SET status = 'failed' WHERE stripe_payment_intent_id = ? AND status = 'pending'`
-    ).bind(pi.id).run();
   }
 
   return json({ received: true });
-}
-
-// A "pending" payments row is created the moment a tenant clicks "Pay
-// rent" (a Stripe PaymentIntent exists), before they've actually
-// submitted the embedded payment form. If they close the tab, back out,
-// or click "Pay rent" again to retry, that row is left behind forever
-// unless something cleans it up -- this is that something, run on a
-// schedule (see wrangler.toml's [triggers] crons) rather than on a
-// timer in the browser, since nothing guarantees the tab stays open.
-const PENDING_PAYMENT_TTL_MINUTES = 3;
-
-// Deliberately NOT a blind "delete anything pending older than N
-// minutes" -- ACH (bank debit) payments sit in Stripe's 'processing'
-// state for days after a tenant submits them, and the webhook that
-// marks a payment 'succeeded' can take that long to arrive too. Time
-// alone can't tell a truly abandoned attempt apart from rent that's
-// genuinely mid-transfer, so this checks each stale row's real
-// PaymentIntent status with Stripe before deciding: delete it only if
-// Stripe confirms it was never actually submitted (or was canceled);
-// leave anything still in flight alone; and reconcile the rare case
-// where Stripe shows it succeeded but our webhook hasn't landed yet,
-// instead of losing that payment.
-const ABANDONED_INTENT_STATUSES = ['requires_payment_method', 'requires_confirmation', 'canceled'];
-
-async function cleanupStalePendingPayments(env) {
-  if (!env.STRIPE_SECRET_KEY) return;
-
-  const stale = await env.DB.prepare(
-    `SELECT id, stripe_payment_intent_id FROM payments
-     WHERE status = 'pending'
-       AND stripe_payment_intent_id IS NOT NULL
-       AND datetime(created_at) < datetime('now', '-' || ? || ' minutes')`
-  ).bind(PENDING_PAYMENT_TTL_MINUTES).all();
-
-  if (!stale.results.length) return;
-
-  const stripe = new Stripe(env.STRIPE_SECRET_KEY, { httpClient: Stripe.createFetchHttpClient() });
-
-  for (const row of stale.results) {
-    let intent;
-    try {
-      intent = await stripe.paymentIntents.retrieve(row.stripe_payment_intent_id);
-    } catch (err) {
-      console.error('cleanupStalePendingPayments: could not retrieve', row.stripe_payment_intent_id, err);
-      continue;
-    }
-
-    if (intent.status === 'succeeded') {
-      const receiptUrl = await fetchReceiptUrl(env, intent.latest_charge);
-      await env.DB.prepare(
-        `UPDATE payments SET status = 'succeeded', paid_at = datetime('now'), receipt_url = ? WHERE id = ?`
-      ).bind(receiptUrl, row.id).run();
-    } else if (ABANDONED_INTENT_STATUSES.includes(intent.status)) {
-      await env.DB.prepare(`DELETE FROM payments WHERE id = ?`).bind(row.id).run();
-    }
-    // Anything else (processing, requires_action, etc.) is left as-is --
-    // still genuinely in flight.
-  }
 }
 
 export default {
@@ -1053,10 +1014,5 @@ export default {
 
     // Everything else under /legacy/* is a static asset (HTML/CSS/JS).
     return env.ASSETS.fetch(request);
-  },
-
-  // Fired by the Cloudflare Cron Trigger in wrangler.toml's [triggers].
-  async scheduled(event, env, ctx) {
-    ctx.waitUntil(cleanupStalePendingPayments(env));
   },
 };

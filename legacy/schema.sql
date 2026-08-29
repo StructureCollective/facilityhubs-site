@@ -49,6 +49,13 @@ CREATE TABLE IF NOT EXISTS payments (
 
 CREATE INDEX IF NOT EXISTS idx_payments_tenant ON payments(tenant_id);
 
+-- Makes the webhook's `INSERT OR IGNORE ... stripe_payment_intent_id`
+-- (src/index.js, handleStripeWebhook) safe against Stripe redelivering
+-- the same payment_intent.succeeded event -- a partial index so 'direct'
+-- payments (NULL here) never collide with each other.
+CREATE UNIQUE INDEX IF NOT EXISTS idx_payments_stripe_intent_unique
+  ON payments(stripe_payment_intent_id) WHERE stripe_payment_intent_id IS NOT NULL;
+
 CREATE TABLE IF NOT EXISTS maintenance_requests (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   tenant_id INTEGER NOT NULL REFERENCES tenants(id),

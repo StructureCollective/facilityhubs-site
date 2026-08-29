@@ -98,6 +98,23 @@ who has an account.
       ALTER TABLE payments ADD COLUMN late_fee_cents INTEGER;"
    ```
 
+   And if it predates the unique index on `stripe_payment_intent_id`
+   (added so a redelivered Stripe webhook can't create a duplicate
+   payment -- see handleStripeWebhook in src/index.js):
+   ```
+   npx wrangler d1 execute legacy_property_hub_db --remote --command \
+     "CREATE UNIQUE INDEX IF NOT EXISTS idx_payments_stripe_intent_unique
+        ON payments(stripe_payment_intent_id) WHERE stripe_payment_intent_id IS NOT NULL;"
+   ```
+
+   One-time cleanup if you have old rows stuck in `status = 'pending'`
+   from before this: the app no longer creates or relies on that status
+   at all (see above), so it's safe to just clear them out --
+   ```
+   npx wrangler d1 execute legacy_property_hub_db --remote --command \
+     "DELETE FROM payments WHERE status = 'pending';"
+   ```
+
    And if it predates `tenant_fees` (one-time fees an admin adds from
    Admin -> a tenant's detail view, separate from the recurring late fee
    -- each has its own label and only gets charged once, on that
@@ -125,8 +142,10 @@ who has an account.
      Stripe Dashboard -> Developers -> API keys.
    - Create a webhook endpoint at Developers -> Webhooks pointing to
      `https://facilityhubs.com/legacy/api/stripe/webhook`, subscribed to
-     `payment_intent.succeeded`, `payment_intent.payment_failed`, and
-     `payment_intent.canceled`. Copy its **Signing secret**.
+     `payment_intent.succeeded` (the only event this app acts on --
+     nothing is recorded for a payment until it actually succeeds, so
+     there's no "pending" or "failed" row to reconcile for anything
+     else). Copy its **Signing secret**.
    - Set all three as Worker secrets (never put these in wrangler.toml or
      commit them -- the publishable key isn't sensitive, but this keeps
      the setup consistent and out of git either way):
@@ -141,13 +160,11 @@ who has an account.
      tenant Payments page and Admin's tenant detail view, and linked
      from the payment-confirmation email. No setup needed beyond the
      above.
-   - A "pending" payment row that's abandoned (tenant opens the payment
-     form, never finishes) is swept up automatically a few minutes
-     later by a scheduled Cron Trigger (`wrangler.toml`'s `[triggers]`)
-     -- this is deployed along with everything else by `npm run deploy`
-     in step 7, no separate Dashboard step required. It won't touch a
-     payment that's genuinely still in progress (e.g. an ACH transfer
-     that's still processing).
+   - No "pending" payment row is ever created while a tenant is mid-
+     checkout -- the payments row itself is only written by the webhook,
+     once Stripe confirms the charge actually succeeded (src/index.js,
+     handleStripeWebhook). If a tenant opens the payment form and never
+     finishes, or the payment fails, nothing is left behind to clean up.
 
 6. **Set up email sign-in (Resend + session secret):**
    - Get your **API key** from the Resend dashboard and set it as a
