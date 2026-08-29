@@ -21,6 +21,10 @@ CREATE TABLE IF NOT EXISTS payments (
   amount_cents INTEGER NOT NULL,
   status TEXT NOT NULL DEFAULT 'pending',
   period_label TEXT,
+  -- 'stripe' for a payment made through this app's Stripe Checkout;
+  -- 'direct' for one collected outside the app (cash, check, handed
+  -- directly to the landlord) and recorded here after the fact.
+  method TEXT NOT NULL DEFAULT 'stripe',
   stripe_checkout_session_id TEXT UNIQUE,
   stripe_payment_intent_id TEXT,
   created_at TEXT NOT NULL DEFAULT (datetime('now')),

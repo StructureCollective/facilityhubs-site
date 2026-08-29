@@ -109,8 +109,10 @@
       return;
     }
     $('historyBody').innerHTML = payments.map(function (p) {
+      var directTag = p.method && p.method !== 'stripe'
+        ? ' <span class="pill" style="background:var(--bg);color:var(--muted);">paid direct</span>' : '';
       return '<tr><td>' + esc(p.period_label || '') + '</td><td>' + money(p.amount_cents) +
-        '</td><td><span class="pill ' + esc(p.status) + '">' + esc(p.status) + '</span></td><td>' +
+        '</td><td><span class="pill ' + esc(p.status) + '">' + esc(p.status) + '</span>' + directTag + '</td><td>' +
         fmtDate(p.paid_at || p.created_at) + '</td></tr>';
     }).join('');
   }

@@ -176,7 +176,7 @@ async function handleApi(request, env, url) {
     if (!tenant) return json({ error: 'not found' }, 404);
     const late = await lateFeeInfo(env, tenant);
     const payments = await env.DB.prepare(
-      `SELECT id, amount_cents, status, period_label, created_at, paid_at
+      `SELECT id, amount_cents, status, period_label, method, created_at, paid_at
        FROM payments WHERE tenant_id = ? ORDER BY created_at DESC`
     ).bind(tenant.id).all();
     return json({ tenant: tenantSummary(tenant, late), payments: payments.results });
@@ -185,7 +185,7 @@ async function handleApi(request, env, url) {
   const paymentsMatch = path.match(/^\/tenants\/(\d+)\/payments$/);
   if (paymentsMatch && request.method === 'GET') {
     const payments = await env.DB.prepare(
-      `SELECT id, amount_cents, status, period_label, created_at, paid_at
+      `SELECT id, amount_cents, status, period_label, method, created_at, paid_at
        FROM payments WHERE tenant_id = ? ORDER BY created_at DESC`
     ).bind(paymentsMatch[1]).all();
     return json({ payments: payments.results });

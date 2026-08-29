@@ -95,7 +95,13 @@
     $('payLink').href = '../Payments/?tenant_id=' + tenantId;
 
     const payments = data.payments || [];
-    const lastPaid = payments.find(function (p) { return p.status === 'succeeded'; });
+    // Pick by paid_at, not array order -- the API sorts by created_at
+    // (when the payment was initiated), which isn't reliably the same
+    // as when it was actually paid, especially for payments recorded
+    // after the fact (e.g. paid direct to the landlord).
+    const lastPaid = payments
+      .filter(function (p) { return p.status === 'succeeded' && p.paid_at; })
+      .sort(function (a, b) { return new Date(b.paid_at) - new Date(a.paid_at); })[0];
     $('lastPayment').textContent = lastPaid ? fmtDate(lastPaid.paid_at) : 'None yet';
 
     $('loadingMsg').hidden = true;
