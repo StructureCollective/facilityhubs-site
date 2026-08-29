@@ -94,7 +94,7 @@ header.page-header p { color: var(--muted); margin: 6px 0 0; }
 .btn:disabled { opacity: .5; cursor: not-allowed; }
 .btn.gold { background: var(--gold); }
 .btn.gold:hover { background: var(--gold-light); }
-textarea, input[type="text"] {
+textarea, input[type="text"], select {
   width: 100%; padding: 12px 14px; border: 1px solid var(--line-strong); border-radius: 8px;
   font: inherit; color: var(--ink); background: #fff;
 }

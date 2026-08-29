@@ -19,6 +19,11 @@
     font-size: .82rem; font-weight: 700; color: var(--muted); cursor: pointer;
   }
   .detail-tabs button.active { background: var(--navy); color: #fff; border-color: var(--navy); }
+  #maintenanceList { display: none; }
+  #maintenanceList.open { display: block; }
+  .toolbar { display: flex; gap: 10px; margin-bottom: 16px; flex-wrap: wrap; }
+  .toolbar input[type="text"], .toolbar select { width: auto; }
+  .toolbar input[type="text"] { min-width: 240px; }
 </style>
 </head>
 <body>
@@ -33,7 +38,8 @@
 <p class="sub">Property Hub</p>
 </div>
 <nav>
-<a class="active" aria-current="page">Tenants</a>
+<a class="active" id="navTenants" aria-current="page">Tenants</a>
+<a id="navMaintenance">Maintenance Requests</a>
 <div class="divider"></div>
 <a href="/legacy/">Sign Out</a>
 </nav>
@@ -48,6 +54,26 @@
 <table>
 <thead><tr><th>Tenant</th><th>Address</th><th>Rent</th><th>Next due</th><th>Last paid</th></tr></thead>
 <tbody id="tenantBody"><tr><td colspan="5">Loading&hellip;</td></tr></tbody>
+</table>
+</div>
+
+<div id="maintenanceList">
+<header class="page-header">
+<h1>Maintenance Requests</h1>
+<p>Every request submitted across all tenants.</p>
+</header>
+<div id="maintenanceApiNotice" class="notice error" hidden></div>
+<div class="toolbar">
+<input type="text" id="maintenanceSearch" placeholder="Search tenant, unit, or description&hellip;">
+<select id="maintenanceStatusFilter">
+<option value="">All statuses</option>
+<option value="open">Open</option>
+<option value="closed">Closed</option>
+</select>
+</div>
+<table>
+<thead><tr><th>Tenant</th><th>Unit</th><th>Description</th><th>Status</th><th>Submitted</th></tr></thead>
+<tbody id="allMaintenanceBody"><tr><td colspan="5">Loading&hellip;</td></tr></tbody>
 </table>
 </div>
 

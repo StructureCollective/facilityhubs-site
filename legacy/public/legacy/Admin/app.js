@@ -7,6 +7,7 @@
 (function () {
   const $ = function (id) { return document.getElementById(id); };
   let currentTenantId = null;
+  let allMaintenance = [];
 
   function money(cents) {
     return (cents / 100).toLocaleString('en-US', { style: 'currency', currency: 'USD' });
@@ -29,8 +30,64 @@
     $('backLink').addEventListener('click', showList);
     $('tabPayments').addEventListener('click', function () { showTab('payments'); });
     $('tabMaintenance').addEventListener('click', function () { showTab('maintenance'); });
+    $('navTenants').addEventListener('click', showTenantsView);
+    $('navMaintenance').addEventListener('click', showMaintenanceView);
+    $('maintenanceSearch').addEventListener('input', renderAllMaintenance);
+    $('maintenanceStatusFilter').addEventListener('change', renderAllMaintenance);
     loadTenants();
   });
+
+  function showTenantsView() {
+    $('navTenants').className = 'active';
+    $('navMaintenance').className = '';
+    $('maintenanceList').className = '';
+    document.getElementById('tenantList').style.display = '';
+    $('tenantDetail').className = '';
+  }
+
+  function showMaintenanceView() {
+    $('navTenants').className = '';
+    $('navMaintenance').className = 'active';
+    document.getElementById('tenantList').style.display = 'none';
+    $('tenantDetail').className = '';
+    $('maintenanceList').className = 'open';
+    if (!allMaintenance.length) loadAllMaintenance();
+  }
+
+  function loadAllMaintenance() {
+    $('allMaintenanceBody').innerHTML = '<tr><td colspan="5">Loading&hellip;</td></tr>';
+    fetch('/legacy/api/maintenance')
+      .then(function (r) { return r.json(); })
+      .then(function (data) {
+        allMaintenance = data.requests || [];
+        renderAllMaintenance();
+      })
+      .catch(function () {
+        $('maintenanceApiNotice').textContent = 'Could not load maintenance requests.';
+        $('maintenanceApiNotice').hidden = false;
+      });
+  }
+
+  function renderAllMaintenance() {
+    var q = ($('maintenanceSearch').value || '').trim().toLowerCase();
+    var statusFilter = $('maintenanceStatusFilter').value;
+    var filtered = allMaintenance.filter(function (r) {
+      if (statusFilter && r.status !== statusFilter) return false;
+      if (!q) return true;
+      var haystack = (r.full_name + ' ' + (r.unit_label || '') + ' ' + r.description).toLowerCase();
+      return haystack.indexOf(q) !== -1;
+    });
+    if (!filtered.length) {
+      $('allMaintenanceBody').innerHTML = '<tr><td colspan="5">' +
+        (allMaintenance.length ? 'No requests match your search.' : 'No maintenance requests yet.') + '</td></tr>';
+      return;
+    }
+    $('allMaintenanceBody').innerHTML = filtered.map(function (r) {
+      return '<tr><td>' + esc(r.full_name) + '</td><td>' + esc(r.unit_label || '\u2014') + '</td><td>' +
+        esc(r.description) + '</td><td><span class="pill ' + esc(r.status) + '">' + esc(r.status) +
+        '</span></td><td>' + fmtDate(r.created_at) + '</td></tr>';
+    }).join('');
+  }
 
   function loadTenants() {
     fetch('/legacy/api/tenants')
@@ -65,6 +122,7 @@
 
   function showDetail(id, name, unit) {
     currentTenantId = id;
+    $('maintenanceList').className = '';
     document.getElementById('tenantList').style.display = 'none';
     $('tenantDetail').className = 'open';
     $('detailName').textContent = name;
@@ -127,7 +185,6 @@
   }
 
   function showList() {
-    $('tenantDetail').className = '';
-    document.getElementById('tenantList').style.display = '';
+    showTenantsView();
   }
 })();

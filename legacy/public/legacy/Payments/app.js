@@ -4,6 +4,7 @@
  */
 (function () {
   const $ = function (id) { return document.getElementById(id); };
+  let allPayments = [];
 
   function money(cents) {
     return (cents / 100).toLocaleString('en-US', { style: 'currency', currency: 'USD' });
@@ -49,6 +50,9 @@
         $('loadingMsg').textContent = 'Could not load payments. Please reload the page.';
       });
 
+    $('historySearch').addEventListener('input', renderHistory);
+    $('historyStatusFilter').addEventListener('change', renderHistory);
+
     $('payBtn').addEventListener('click', function () {
       $('payBtn').disabled = true;
       $('payStatus').textContent = 'Redirecting to secure checkout…';
@@ -91,7 +95,8 @@
       $('statusNotice').hidden = false;
     }
 
-    renderHistory(data.payments || []);
+    allPayments = data.payments || [];
+    renderHistory();
     $('loadingMsg').hidden = true;
     $('app').hidden = false;
   }
@@ -103,12 +108,20 @@
     return n + (s[(v - 20) % 10] || s[v] || s[0]);
   }
 
-  function renderHistory(payments) {
-    if (!payments.length) {
-      $('historyBody').innerHTML = '<tr><td colspan="4">No payments yet.</td></tr>';
+  function renderHistory() {
+    var q = ($('historySearch').value || '').trim().toLowerCase();
+    var statusFilter = $('historyStatusFilter').value;
+    var filtered = allPayments.filter(function (p) {
+      if (statusFilter && p.status !== statusFilter) return false;
+      if (!q) return true;
+      return (p.period_label || '').toLowerCase().indexOf(q) !== -1;
+    });
+    if (!filtered.length) {
+      $('historyBody').innerHTML = '<tr><td colspan="4">' +
+        (allPayments.length ? 'No payments match your search.' : 'No payments yet.') + '</td></tr>';
       return;
     }
-    $('historyBody').innerHTML = payments.map(function (p) {
+    $('historyBody').innerHTML = filtered.map(function (p) {
       var directTag = p.method && p.method !== 'stripe'
         ? ' <span class="pill" style="background:var(--bg);color:var(--muted);">paid direct</span>' : '';
       return '<tr><td>' + esc(p.period_label || '') + '</td><td>' + money(p.amount_cents) +

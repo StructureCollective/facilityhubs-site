@@ -29,6 +29,41 @@ function json(data, status = 200) {
   });
 }
 
+function escapeHtml(v) {
+  return String(v).replace(/[&<>'"]/g, (c) => (
+    { '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[c]
+  ));
+}
+
+// Sends an email via Resend, from legacy@facilityhubs.com. Requires the
+// RESEND_API_KEY secret (`wrangler secret put RESEND_API_KEY`) -- until
+// that's set, this quietly no-ops rather than breaking the payment or
+// maintenance-request flow that triggered it.
+async function sendEmail(env, { to, subject, html, replyTo }) {
+  if (!env.RESEND_API_KEY) return;
+  try {
+    const res = await fetch('https://api.resend.com/emails', {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${env.RESEND_API_KEY}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        from: 'Legacy Property Hub <legacy@facilityhubs.com>',
+        to: [to],
+        subject,
+        html,
+        ...(replyTo ? { reply_to: replyTo } : {}),
+      }),
+    });
+    if (!res.ok) {
+      console.error('Resend send failed:', res.status, await res.text());
+    }
+  } catch (err) {
+    console.error('Resend send threw:', err);
+  }
+}
+
 // All due-day / late-fee day-of-month math is done in the property's
 // local time (US Eastern), not UTC -- a tenant whose rent is due "on
 // the 7th" should roll over to the next period at midnight Eastern,
@@ -154,6 +189,18 @@ async function handleApi(request, env, url) {
     return json({ tenants: withDetails });
   }
 
+  // All maintenance requests across every tenant, for the Admin view.
+  if (path === '/maintenance' && request.method === 'GET') {
+    const requests = await env.DB.prepare(
+      `SELECT m.id, m.description, m.status, m.created_at, m.updated_at,
+              t.id AS tenant_id, t.full_name, t.unit_label
+       FROM maintenance_requests m
+       JOIN tenants t ON t.id = m.tenant_id
+       ORDER BY m.created_at DESC`
+    ).all();
+    return json({ requests: requests.results });
+  }
+
   if (path === '/tenants' && request.method === 'POST') {
     const body = await request.json().catch(() => ({}));
     const { email, fullName, unitLabel, rentAmountCents, dueDay, lateFeeCents, lateFeeAfterDay } = body;
@@ -204,12 +251,24 @@ async function handleApi(request, env, url) {
     const tenant = await loadTenant(env, maintenanceMatch[1]);
     if (!tenant) return json({ error: 'not found' }, 404);
     const body = await request.json().catch(() => ({}));
-    if (!body.description || !String(body.description).trim()) {
+    const description = body.description ? String(body.description).trim() : '';
+    if (!description) {
       return json({ error: 'description is required' }, 400);
     }
     await env.DB.prepare(
       `INSERT INTO maintenance_requests (tenant_id, description) VALUES (?, ?)`
-    ).bind(tenant.id, String(body.description).trim()).run();
+    ).bind(tenant.id, description).run();
+
+    await sendEmail(env, {
+      to: 'thenonamejames@gmail.com',
+      subject: `Maintenance request - ${tenant.unit_label || tenant.full_name}`,
+      replyTo: tenant.email,
+      html: `<p><strong>Tenant:</strong> ${escapeHtml(tenant.full_name)}${tenant.unit_label ? ` (${escapeHtml(tenant.unit_label)})` : ''}</p>
+<p><strong>Email:</strong> ${escapeHtml(tenant.email)}</p>
+<p><strong>Request:</strong></p>
+<p>${escapeHtml(description)}</p>`,
+    });
+
     return json({ ok: true });
   }
 
@@ -282,6 +341,24 @@ async function handleStripeWebhook(request, env) {
       `UPDATE payments SET status = 'succeeded', paid_at = datetime('now'), stripe_payment_intent_id = ?
        WHERE stripe_checkout_session_id = ?`
     ).bind(session.payment_intent, session.id).run();
+
+    const paid = await env.DB.prepare(
+      `SELECT p.amount_cents, p.period_label, t.email, t.full_name, t.unit_label
+       FROM payments p JOIN tenants t ON t.id = p.tenant_id
+       WHERE p.stripe_checkout_session_id = ?`
+    ).bind(session.id).first();
+    if (paid && paid.email) {
+      const firstName = paid.full_name ? paid.full_name.split(' ')[0] : 'there';
+      await sendEmail(env, {
+        to: paid.email,
+        subject: 'Payment received - Legacy Property Hub',
+        html: `<p>Hi ${escapeHtml(firstName)},</p>
+<p>We've received your rent payment${paid.unit_label ? ` for ${escapeHtml(paid.unit_label)}` : ''}.</p>
+<p><strong>Amount:</strong> $${(paid.amount_cents / 100).toFixed(2)}<br>
+<strong>Period:</strong> ${escapeHtml(paid.period_label || '')}</p>
+<p>Thank you,<br>Legacy Property Hub</p>`,
+      });
+    }
   } else if (event.type === 'checkout.session.expired') {
     const session = event.data.object;
     await env.DB.prepare(

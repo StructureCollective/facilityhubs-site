@@ -7,6 +7,25 @@
 <link rel="icon" type="image/png" href="/assets/facility-hubs-favicon.png">
 <meta name="theme-color" content="#0d2b5c">
 <link rel="stylesheet" href="../style.css">
+<style>
+  /* This tile is the interim "pay rent" flow -- it calls Stripe
+     Checkout directly. When the custom-built Stripe payment page
+     exists, swap payBtn's click handler (in app.js) to navigate there
+     instead of calling /legacy/api/tenants/:id/pay itself. */
+  .pay-hero {
+    background: linear-gradient(135deg, var(--navy), var(--navy-dark));
+    color: #fff; border-radius: 16px; padding: 28px 32px; margin-bottom: 28px;
+    display: flex; align-items: center; justify-content: space-between; gap: 24px; flex-wrap: wrap;
+  }
+  .pay-hero .label { font-size: .78rem; text-transform: uppercase; letter-spacing: .06em; opacity: .7; font-weight: 700; }
+  .pay-hero .amount { font-family: var(--font-head); font-size: 2.6rem; margin: 6px 0 4px; }
+  .pay-hero .due { font-size: .88rem; opacity: .85; }
+  .pay-hero .pay-actions { text-align: right; }
+  .pay-hero .sub { color: rgba(255,255,255,.85); margin-top: 8px; }
+  .toolbar { display: flex; gap: 10px; margin-bottom: 16px; flex-wrap: wrap; }
+  .toolbar input[type="text"], .toolbar select { width: auto; }
+  .toolbar input[type="text"] { min-width: 240px; }
+</style>
 </head>
 <body>
 <div id="loadingMsg" class="loading">Loading&hellip;</div>
@@ -38,23 +57,29 @@
 <div id="apiNotice" class="notice error" hidden></div>
 <div id="statusNotice" class="notice good" hidden></div>
 
-<section class="cards">
-<div class="card">
+<section class="pay-hero">
+<div>
 <div class="label">Amount due</div>
-<div class="value" id="rentAmount">&mdash;</div>
-<div class="sub" id="dueSub"></div>
+<div class="amount" id="rentAmount">&mdash;</div>
+<div class="due" id="dueSub"></div>
 </div>
-<div class="card">
-<div class="label">Pay now</div>
-<div style="margin-top:10px;">
+<div class="pay-actions">
 <button class="btn gold" id="payBtn">Pay rent</button>
-</div>
 <div class="sub" id="payStatus"></div>
 </div>
 </section>
 
 <section>
 <h2 style="margin-bottom:12px;">Payment history</h2>
+<div class="toolbar">
+<input type="text" id="historySearch" placeholder="Search period&hellip;">
+<select id="historyStatusFilter">
+<option value="">All statuses</option>
+<option value="succeeded">Succeeded</option>
+<option value="pending">Pending</option>
+<option value="failed">Failed</option>
+</select>
+</div>
 <table>
 <thead><tr><th>Period</th><th>Amount</th><th>Status</th><th>Date</th></tr></thead>
 <tbody id="historyBody"><tr><td colspan="4">Loading&hellip;</td></tr></tbody>
