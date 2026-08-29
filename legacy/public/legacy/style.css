@@ -24,7 +24,7 @@ body { margin: 0; background: var(--bg); font: 15px/1.5 var(--font-body); color:
 h1, h2 { font-family: var(--font-head); font-weight: 700; margin: 0; }
 
 .topbar {
-  height: 182px;
+  height: 174px;
   background: #fff;
   border-bottom: 1px solid var(--line);
   display: flex;
@@ -35,9 +35,9 @@ h1, h2 { font-family: var(--font-head); font-weight: 700; margin: 0; }
   top: 0;
   z-index: 10;
 }
-.topbar img { height: 150px; display: block; }
+.topbar img { height: 160px; display: block; }
 
-.shell { display: grid; grid-template-columns: 230px 1fr; min-height: calc(100vh - 182px); }
+.shell { display: grid; grid-template-columns: 230px 1fr; min-height: calc(100vh - 174px); }
 
 aside { background: var(--navy); padding: 28px 16px; }
 .greeting { padding: 0 10px 20px; margin-bottom: 12px; border-bottom: 1px solid rgba(255,255,255,.16); }

@@ -57,22 +57,41 @@ function nextDueDate(dueDay, fromDate = new Date()) {
   return new Date(Date.UTC(y, m, dueDay)).toISOString().slice(0, 10);
 }
 
-function currentPeriodLabel(fromDate = new Date()) {
-  const { year, month } = easternParts(fromDate);
-  return `${year}-${String(month).padStart(2, '0')}`; // 'YYYY-MM'
+// { year, month (1-12) } of the billing cycle currently in effect --
+// the most recent occurrence of `dueDay` on/before `fromDate` (Eastern
+// time). Unlike nextDueDate() (always strictly in the future), this is
+// "the rent that's actually due or overdue right now."
+function currentCycle(dueDay, fromDate = new Date()) {
+  const { year, month, day } = easternParts(fromDate);
+  let y = year;
+  let m = month; // 1-indexed
+  if (day < dueDay) {
+    m -= 1;
+    if (m < 1) { m = 12; y -= 1; }
+  }
+  return { year: y, month: m };
 }
 
-function periodLabel(dueDay) {
-  return nextDueDate(dueDay).slice(0, 7); // 'YYYY-MM'
+function currentDueDate(dueDay, fromDate = new Date()) {
+  const { year, month } = currentCycle(dueDay, fromDate);
+  return new Date(Date.UTC(year, month - 1, dueDay)).toISOString().slice(0, 10);
+}
+
+// The period a payment counts against: the billing cycle currently in
+// effect, not always "next month" -- paying rent pays off what's due
+// *now* (which may already be overdue), not next month's rent.
+function currentPeriodLabel(dueDay, fromDate = new Date()) {
+  const { year, month } = currentCycle(dueDay, fromDate);
+  return `${year}-${String(month).padStart(2, '0')}`; // 'YYYY-MM'
 }
 
 async function loadTenant(env, id) {
   return env.DB.prepare('SELECT * FROM tenants WHERE id = ? AND active = 1').bind(id).first();
 }
 
-// Has this tenant already paid for the current calendar month?
-async function hasPaidCurrentPeriod(env, tenantId) {
-  const period = currentPeriodLabel();
+// Has this tenant already paid for the billing cycle currently in effect?
+async function hasPaidCurrentPeriod(env, tenantId, dueDay) {
+  const period = currentPeriodLabel(dueDay);
   const row = await env.DB.prepare(
     `SELECT id FROM payments WHERE tenant_id = ? AND period_label = ? AND status = 'succeeded' LIMIT 1`
   ).bind(tenantId, period).first();
@@ -80,16 +99,24 @@ async function hasPaidCurrentPeriod(env, tenantId) {
 }
 
 async function lateFeeInfo(env, tenant) {
+  const paid = await hasPaidCurrentPeriod(env, tenant.id, tenant.due_day);
   if (!tenant.late_fee_after_day) {
-    return { lateFeeCents: tenant.late_fee_cents || 0, lateFeeAfterDay: null, lateFeeApplies: false };
+    return { lateFeeCents: tenant.late_fee_cents || 0, lateFeeAfterDay: null, lateFeeApplies: false, paidCurrentPeriod: paid };
   }
-  const todayDay = easternParts().day;
-  const paid = await hasPaidCurrentPeriod(env, tenant.id);
-  const applies = !paid && todayDay > tenant.late_fee_after_day;
+  // Compare real calendar dates (not bare day-of-month numbers) so the
+  // late-fee cutoff is always read from the SAME cycle being billed --
+  // this is what stops a late fee for an already-overdue cycle from
+  // getting pinned to next month's not-yet-due date.
+  const { year, month } = currentCycle(tenant.due_day);
+  const cutoff = Date.UTC(year, month - 1, tenant.late_fee_after_day);
+  const today = easternParts();
+  const todayUtc = Date.UTC(today.year, today.month - 1, today.day);
+  const applies = !paid && todayUtc > cutoff;
   return {
     lateFeeCents: tenant.late_fee_cents || 0,
     lateFeeAfterDay: tenant.late_fee_after_day,
     lateFeeApplies: applies,
+    paidCurrentPeriod: paid,
   };
 }
 
@@ -101,7 +128,9 @@ function tenantSummary(tenant, late) {
     unitLabel: tenant.unit_label,
     rentAmountCents: tenant.rent_amount_cents,
     dueDay: tenant.due_day,
-    nextDueDate: nextDueDate(tenant.due_day),
+    // Once caught up, show the upcoming due date; while unpaid, show
+    // what's actually due/overdue right now instead of skipping ahead.
+    nextDueDate: late.paidCurrentPeriod ? nextDueDate(tenant.due_day) : currentDueDate(tenant.due_day),
     lateFeeCents: late.lateFeeCents,
     lateFeeAfterDay: late.lateFeeAfterDay,
     lateFeeApplies: late.lateFeeApplies,
@@ -218,7 +247,7 @@ async function handleApi(request, env, url) {
     await env.DB.prepare(
       `INSERT INTO payments (tenant_id, amount_cents, status, stripe_checkout_session_id, period_label)
        VALUES (?, ?, 'pending', ?, ?)`
-    ).bind(tenant.id, amountCents, session.id, periodLabel(tenant.due_day)).run();
+    ).bind(tenant.id, amountCents, session.id, currentPeriodLabel(tenant.due_day)).run();
 
     return json({ url: session.url });
   }
