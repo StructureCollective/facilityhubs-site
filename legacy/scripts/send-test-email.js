@@ -30,11 +30,12 @@ const mock = {
   issueStartedOn: '2026-08-20',
   description: 'Kitchen faucet has been leaking steadily for the past few days.',
   paid: {
+    id: 4821,
+    tenant_id: 12,
     full_name: 'Jordan Rivera',
     unit_label: 'Unit 4B',
     amount_cents: 150000,
     period_label: 'September 2026',
-    receipt_url: 'https://dashboard.stripe.com/receipts/example',
   },
 };
 

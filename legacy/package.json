@@ -14,6 +14,13 @@
   },
   "dependencies": {
     "jose": "^5.9.6",
-    "stripe": "^17.3.1"
+    "stripe": "^17.3.1",
+    "pdf-lib": "^1.17.1"
+  },
+  "allowScripts": {
+    "esbuild@0.17.19": true,
+    "fsevents@2.3.3": true,
+    "sharp@0.33.5": true,
+    "workerd@1.20250718.0": true
   }
 }

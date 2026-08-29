@@ -272,8 +272,8 @@
     $('historyBody').innerHTML = filtered.map(function (p) {
       var directTag = p.method && p.method !== 'stripe'
         ? ' <span class="pill" style="background:var(--bg);color:var(--muted);">paid direct</span>' : '';
-      var receiptCell = p.receipt_url
-        ? '<a href="' + esc(p.receipt_url) + '" target="_blank" rel="noopener">View / download</a>'
+      var receiptCell = p.status === 'succeeded'
+        ? '<a href="/legacy/api/tenants/me/payments/' + p.id + '/receipt.pdf" target="_blank" rel="noopener">View / download</a>'
         : '\u2014';
       return '<tr><td>' + esc(p.period_label || '') + '</td><td>' + money(p.amount_cents) +
         '</td><td><span class="pill ' + esc(p.status) + '">' + esc(p.status) + '</span>' + directTag + '</td><td>' +

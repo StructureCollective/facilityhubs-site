@@ -1,0 +1,154 @@
+// Legacy Property Hub -- renders a succeeded payment into a formal,
+// single-page PDF receipt using pdf-lib (pure JS, no native deps -- works
+// fine in the Workers runtime). Same approach as Our Home's application
+// PDF: generated on demand (not stored anywhere) each time a tenant or
+// admin opens GET /legacy/api/tenants/:id/payments/:paymentId/receipt.pdf
+// -- see that route in src/index.js. Nothing here depends on Stripe's own
+// hosted receipt page, so this works the same for a card/bank payment
+// (method: 'stripe') and a manually-recorded one (method: 'direct').
+
+import { PDFDocument, StandardFonts, rgb } from 'pdf-lib';
+
+const PAGE_SIZE = [612, 792]; // US Letter, points
+const MARGIN = 54;
+
+// Same palette as the branded email shell (emailShell()/emailButton() in
+// src/index.js) so the receipt reads as the same brand.
+const NAVY = rgb(0.051, 0.169, 0.361); // #0d2b5c
+const GOLD = rgb(0.831, 0.651, 0.165); // #d4a62a
+const INK = rgb(0.071, 0.098, 0.169); // #12192b
+const MUTED = rgb(0.357, 0.392, 0.471); // #5b6478
+const LINE_GRAY = rgb(0.843, 0.859, 0.890); // #d7dbe3
+
+const LOGO_PATH = '/assets/legacy-logo.png';
+
+async function loadLogoBytes(env, request) {
+  if (!env || !env.ASSETS || !request) return null;
+  try {
+    const logoUrl = new URL(LOGO_PATH, request.url);
+    const resp = await env.ASSETS.fetch(new Request(logoUrl));
+    if (!resp.ok) return null;
+    return await resp.arrayBuffer();
+  } catch {
+    return null;
+  }
+}
+
+function money(cents) {
+  return `$${((cents || 0) / 100).toFixed(2)}`;
+}
+
+function formatDate(iso) {
+  if (!iso) return '—';
+  try {
+    return new Date(iso).toLocaleDateString('en-US', {
+      weekday: 'long', year: 'numeric', month: 'long', day: 'numeric',
+    });
+  } catch {
+    return iso;
+  }
+}
+
+export async function generateReceiptPdf(payment, { env, request } = {}) {
+  const pdf = await PDFDocument.create();
+  const font = await pdf.embedFont(StandardFonts.Helvetica);
+  const bold = await pdf.embedFont(StandardFonts.HelveticaBold);
+
+  let logoImage = null;
+  const logoBytes = await loadLogoBytes(env, request);
+  if (logoBytes) {
+    try {
+      logoImage = await pdf.embedPng(logoBytes);
+    } catch {
+      logoImage = null;
+    }
+  }
+
+  const page = pdf.addPage(PAGE_SIZE);
+  const topY = PAGE_SIZE[1] - MARGIN;
+
+  // ---- Letterhead ----
+  let textX = MARGIN;
+  let logoBottom = topY - 30;
+  if (logoImage) {
+    const logoHeight = 48;
+    const scale = logoHeight / logoImage.height;
+    const logoWidth = logoImage.width * scale;
+    page.drawImage(logoImage, { x: MARGIN, y: topY - logoHeight, width: logoWidth, height: logoHeight });
+    textX = MARGIN + logoWidth + 16;
+    logoBottom = topY - logoHeight;
+  }
+  page.drawText('Legacy Property Hub', { x: textX, y: topY - 16, size: 15, font: bold, color: NAVY });
+  page.drawText('Property with Purpose. Value for Generations.', {
+    x: textX, y: topY - 32, size: 9, font, color: MUTED,
+  });
+
+  const headerRuleY = Math.min(logoBottom, topY - 32) - 14;
+  page.drawLine({
+    start: { x: MARGIN, y: headerRuleY },
+    end: { x: PAGE_SIZE[0] - MARGIN, y: headerRuleY },
+    thickness: 2,
+    color: GOLD,
+  });
+
+  let y = headerRuleY - 36;
+
+  // ---- Title + receipt number ----
+  page.drawText('PAYMENT RECEIPT', { x: MARGIN, y, size: 20, font: bold, color: INK });
+  const receiptLabel = `Receipt #LPH-${payment.id}`;
+  const receiptLabelWidth = font.widthOfTextAtSize(receiptLabel, 10.5);
+  page.drawText(receiptLabel, {
+    x: PAGE_SIZE[0] - MARGIN - receiptLabelWidth,
+    y: y + 4,
+    size: 10.5,
+    font,
+    color: MUTED,
+  });
+  y -= 40;
+
+  // ---- Details ----
+  const labelWidth = 160;
+  function row(label, value, opts = {}) {
+    page.drawText(label, { x: MARGIN, y, size: 10.5, font: bold, color: rgb(0.25, 0.25, 0.25) });
+    page.drawText(String(value), {
+      x: MARGIN + labelWidth,
+      y,
+      size: opts.size || 10.5,
+      font: opts.bold ? bold : font,
+      color: opts.color || INK,
+    });
+    y -= opts.gap || 22;
+  }
+
+  row('Tenant', payment.full_name || '—');
+  row('Property / Unit', payment.unit_label || '—');
+  row('Payment period', payment.period_label || '—');
+  row('Date paid', formatDate(payment.paid_at));
+  row('Payment method', payment.method === 'direct' ? 'Paid directly (cash / check)' : 'Card or bank transfer (via Stripe)');
+
+  y -= 8;
+  page.drawLine({
+    start: { x: MARGIN, y: y + 12 },
+    end: { x: PAGE_SIZE[0] - MARGIN, y: y + 12 },
+    thickness: 1,
+    color: LINE_GRAY,
+  });
+  y -= 10;
+
+  row('Amount paid', money(payment.amount_cents), { size: 16, bold: true, color: NAVY, gap: 30 });
+
+  // ---- Footer ----
+  const footerY = MARGIN;
+  page.drawLine({
+    start: { x: MARGIN, y: footerY + 20 },
+    end: { x: PAGE_SIZE[0] - MARGIN, y: footerY + 20 },
+    thickness: 1,
+    color: LINE_GRAY,
+  });
+  page.drawText(
+    'This receipt was generated by Legacy Property Hub and reflects a successful payment on file.',
+    { x: MARGIN, y: footerY, size: 8, font, color: MUTED }
+  );
+
+  return pdf.save();
+}

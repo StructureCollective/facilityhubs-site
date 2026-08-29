@@ -26,6 +26,7 @@
 
 import Stripe from 'stripe';
 import { SignJWT, jwtVerify } from 'jose';
+import { generateReceiptPdf } from './lib/pdf.js';
 
 function json(data, status = 200, extraHeaders = {}) {
   const headers = new Headers({ 'content-type': 'application/json' });
@@ -95,6 +96,9 @@ export async function sendEmail(env, { to, subject, html, replyTo }) {
 // wordmark) is used for the signature at the bottom instead.
 const EMAIL_ICON_URL = 'https://facilityhubs.com/assets/legacy-icon.png';
 const EMAIL_LOGO_URL = 'https://facilityhubs.com/assets/legacy-logo.png';
+// Used to build the absolute receipt-PDF link in paymentReceivedEmailBody()
+// below -- an emailed link needs a full URL, not a relative path.
+const SITE_ORIGIN = 'https://facilityhubs.com';
 
 export function emailShell(bodyHtml) {
   return `<div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,sans-serif;max-width:480px;margin:0 auto;">
@@ -139,11 +143,20 @@ ${issueStartedOn ? `<p><strong>Issue started:</strong> ${escapeHtml(issueStarted
 
 export function paymentReceivedEmailBody(paid) {
   const firstName = paid.full_name ? paid.full_name.split(' ')[0] : 'there';
+  // Our own generated PDF (see src/lib/pdf.js), not Stripe's hosted
+  // receipt page -- that page turned out not to offer a real "download
+  // PDF" button for a plain charge, only Stripe's own Invoicing feature
+  // does. Always included here (unlike the old receipt_url, which
+  // depended on a Stripe API round-trip finishing before this email
+  // sent) since it's generated fresh on demand whenever it's clicked,
+  // straight from this payment's own row -- nothing to wait on.
+  const receiptUrl = `${SITE_ORIGIN}/legacy/api/tenants/${paid.tenant_id}/payments/${paid.id}/receipt.pdf`;
   return emailShell(`<p>Hi ${escapeHtml(firstName)},</p>
 <p>We've received your rent payment${paid.unit_label ? ` for ${escapeHtml(paid.unit_label)}` : ''}.</p>
 <p><strong>Amount:</strong> $${(paid.amount_cents / 100).toFixed(2)}<br>
 <strong>Period:</strong> ${escapeHtml(paid.period_label || '')}</p>
-${paid.receipt_url ? emailButton(paid.receipt_url, 'View / download receipt') : ''}
+${emailButton(receiptUrl, 'View / download receipt (PDF)')}
+<p style="color:#5b6478;font-size:13px;">Opening this link requires being signed in to Legacy Property Hub.</p>
 <p>Thank you,<br>Legacy Property Hub</p>`);
 }
 
@@ -718,6 +731,35 @@ async function handleApi(request, env, url) {
     return json({ payments: payments.results });
   }
 
+  // GET .../payments/:paymentId/receipt.pdf -- a real, self-generated PDF
+  // receipt (see src/lib/pdf.js), gated the same way as every other tenant
+  // route: a tenant can only reach their own payments, an admin any. Works
+  // for both a Stripe-collected payment and a manually-recorded ('direct')
+  // one -- unlike the old Stripe receipt_url, which only ever existed for
+  // Stripe payments and turned out not to offer a real PDF download anyway.
+  const receiptMatch = path.match(/^\/tenants\/(\d+|me)\/payments\/(\d+)\/receipt\.pdf$/);
+  if (receiptMatch && request.method === 'GET') {
+    const access = await resolveTenantAccess(request, env, receiptMatch[1]);
+    if (access.error) return access.error;
+    const payment = await env.DB.prepare(
+      `SELECT p.id, p.amount_cents, p.status, p.period_label, p.method, p.paid_at, t.full_name, t.unit_label
+       FROM payments p JOIN tenants t ON t.id = p.tenant_id
+       WHERE p.id = ? AND p.tenant_id = ?`
+    ).bind(receiptMatch[2], access.tenantId).first();
+    if (!payment) return json({ error: 'Not found' }, 404);
+    if (payment.status !== 'succeeded') {
+      return json({ error: 'A receipt is only available for a succeeded payment.' }, 400);
+    }
+    const pdfBytes = await generateReceiptPdf(payment, { env, request });
+    return new Response(pdfBytes, {
+      status: 200,
+      headers: {
+        'Content-Type': 'application/pdf',
+        'Content-Disposition': `inline; filename="legacy-property-hub-receipt-${payment.id}.pdf"`,
+      },
+    });
+  }
+
   const maintenanceMatch = path.match(/^\/tenants\/(\d+|me)\/maintenance$/);
   if (maintenanceMatch && request.method === 'GET') {
     const access = await resolveTenantAccess(request, env, maintenanceMatch[1]);
@@ -791,8 +833,8 @@ async function handleApi(request, env, url) {
       // No receipt_email here on purpose -- setting it makes Stripe send
       // its own separate automatic receipt in live mode, regardless of
       // any Dashboard email setting. We only want the one branded email
-      // this app sends (which already links to Stripe's hosted receipt
-      // page via receipt_url once the payment succeeds).
+      // this app sends (which links to this app's own generated PDF
+      // receipt -- see generateReceiptPdf() in src/lib/pdf.js).
       description: descriptionParts.join(' + '),
       // fee_ids lets the webhook mark exactly the fees included in THIS
       // charge as applied once it succeeds -- not any fee added after.
@@ -821,11 +863,14 @@ async function handleApi(request, env, url) {
   return json({ error: 'not found' }, 404);
 }
 
-// Looks up the Stripe-hosted receipt page (a printable/downloadable PDF
-// view, via Stripe's own "Download" button on that page) for a charge.
-// `chargeId` is a PaymentIntent's `latest_charge` -- a plain string ID
-// on Stripe API versions from late 2022 on (this app pins stripe@^17,
-// which defaults to a current API version), not an expanded object.
+// Looks up Stripe's own hosted receipt page for a charge -- stored on the
+// payment row for reference only; the app's actual "View / download" link
+// and the confirmation email use generateReceiptPdf() (src/lib/pdf.js)
+// instead, since this page doesn't offer a real PDF download for a plain
+// charge (that's an Invoicing-only Stripe feature). `chargeId` is a
+// PaymentIntent's `latest_charge` -- a plain string ID on Stripe API
+// versions from late 2022 on (this app pins stripe@^17, which defaults to
+// a current API version), not an expanded object.
 async function fetchReceiptUrl(env, chargeId) {
   if (!chargeId || !env.STRIPE_SECRET_KEY) return null;
   try {
@@ -871,7 +916,7 @@ async function handleStripeWebhook(request, env) {
     ).bind(receiptUrl, pi.id).run();
 
     const paid = await env.DB.prepare(
-      `SELECT p.id, p.amount_cents, p.period_label, p.receipt_url, t.email, t.full_name, t.unit_label
+      `SELECT p.id, p.tenant_id, p.amount_cents, p.period_label, p.receipt_url, t.email, t.full_name, t.unit_label
        FROM payments p JOIN tenants t ON t.id = p.tenant_id
        WHERE p.stripe_payment_intent_id = ?`
     ).bind(pi.id).first();
