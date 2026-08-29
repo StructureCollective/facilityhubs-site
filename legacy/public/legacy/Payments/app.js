@@ -212,10 +212,20 @@
 
     let amount = t.rentAmountCents;
     if (t.lateFeeApplies) amount += t.lateFeeCents;
+    const extraFees = t.extraFees || [];
+    if (t.extraFeesCents) amount += t.extraFeesCents;
     $('rentAmount').textContent = money(amount);
-    $('dueSub').textContent = t.lateFeeApplies
-      ? 'Includes ' + money(t.lateFeeCents) + ' late fee (past the ' + ordinal(t.lateFeeAfterDay) + ')'
-      : 'Due ' + fmtDate(t.nextDueDate);
+
+    const subParts = [];
+    if (t.lateFeeApplies) {
+      subParts.push('Includes ' + money(t.lateFeeCents) + ' late fee (past the ' + ordinal(t.lateFeeAfterDay) + ')');
+    }
+    if (extraFees.length) {
+      subParts.push('Includes ' + extraFees.map(function (f) {
+        return esc(f.label) + ' (' + money(f.amountCents) + ')';
+      }).join(', '));
+    }
+    $('dueSub').innerHTML = subParts.length ? subParts.join(' &middot; ') : 'Due ' + fmtDate(t.nextDueDate);
 
     allPayments = data.payments || [];
     renderHistory();

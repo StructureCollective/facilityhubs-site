@@ -296,7 +296,18 @@ async function lateFeeInfo(env, tenant) {
   };
 }
 
-function tenantSummary(tenant, late) {
+// One-time fees an admin has added for this tenant that haven't been
+// charged yet -- a custom label + amount, kept entirely separate from
+// the recurring late fee (which fires automatically past a
+// day-of-month cutoff rather than being added by hand).
+async function pendingFeesFor(env, tenantId) {
+  const rows = await env.DB.prepare(
+    `SELECT id, label, amount_cents FROM tenant_fees WHERE tenant_id = ? AND status = 'pending' ORDER BY created_at`
+  ).bind(tenantId).all();
+  return rows.results;
+}
+
+function tenantSummary(tenant, late, extraFees = []) {
   return {
     id: tenant.id,
     fullName: tenant.full_name,
@@ -310,6 +321,10 @@ function tenantSummary(tenant, late) {
     lateFeeCents: late.lateFeeCents,
     lateFeeAfterDay: late.lateFeeAfterDay,
     lateFeeApplies: late.lateFeeApplies,
+    // Admin-added one-time fees, still unpaid -- separate from the late
+    // fee above. Included in the amount charged on the next payment.
+    extraFees: extraFees.map((f) => ({ id: f.id, label: f.label, amountCents: f.amount_cents })),
+    extraFeesCents: extraFees.reduce((sum, f) => sum + f.amount_cents, 0),
   };
 }
 
@@ -405,7 +420,8 @@ ${emailButton(link, 'Sign in to Legacy Property Hub')}
     const tenant = await loadTenant(env, session.subject);
     if (!tenant) return json({ error: 'Tenant not found' }, 404);
     const late = await lateFeeInfo(env, tenant);
-    return json({ type: 'tenant', tenant: tenantSummary(tenant, late) });
+    const extraFees = await pendingFeesFor(env, tenant.id);
+    return json({ type: 'tenant', tenant: tenantSummary(tenant, late, extraFees) });
   }
 
   // ---- Admin-only ----
@@ -496,6 +512,58 @@ ${emailButton(link, 'Sign in to Legacy Property Hub')}
     return json({ ok: true });
   }
 
+  // Add a one-time fee for a tenant -- a custom label + amount, entirely
+  // separate from the recurring late fee above. It's included in the
+  // total the next time this tenant pays (see the /pay handler below),
+  // then marked 'applied' once that payment succeeds -- never charged
+  // twice, never touching already-recorded payments. The frontend gates
+  // this behind two confirmation prompts before it ever calls here.
+  const addFeeMatch = path.match(/^\/tenants\/(\d+)\/fees$/);
+  if (addFeeMatch && request.method === 'POST') {
+    const session = await getSession(request, env);
+    if (!requireAdmin(session)) return json({ error: 'Forbidden' }, 403);
+
+    const tenantId = addFeeMatch[1];
+    const tenant = await loadTenant(env, tenantId);
+    if (!tenant) return json({ error: 'Tenant not found' }, 404);
+
+    const body = await request.json().catch(() => ({}));
+    const label = body.label ? String(body.label).trim() : '';
+    const amountCents = body.amountCents;
+
+    if (!label || label.length > 80) {
+      return json({ error: 'label is required (80 characters or fewer)' }, 400);
+    }
+    if (!Number.isInteger(amountCents) || amountCents <= 0) {
+      return json({ error: 'amountCents must be a positive whole number of cents' }, 400);
+    }
+
+    await env.DB.prepare(
+      `INSERT INTO tenant_fees (tenant_id, label, amount_cents) VALUES (?, ?, ?)`
+    ).bind(tenantId, label, amountCents).run();
+
+    return json({ ok: true });
+  }
+
+  // Remove a fee before it's been charged -- e.g. it was added by
+  // mistake. Only ever touches a still-'pending' row; once a fee has
+  // been applied to a real payment it's part of that payment's history
+  // and this can no longer remove it.
+  const removeFeeMatch = path.match(/^\/tenants\/(\d+)\/fees\/(\d+)$/);
+  if (removeFeeMatch && request.method === 'DELETE') {
+    const session = await getSession(request, env);
+    if (!requireAdmin(session)) return json({ error: 'Forbidden' }, 403);
+
+    const [, tenantId, feeId] = removeFeeMatch;
+    const result = await env.DB.prepare(
+      `DELETE FROM tenant_fees WHERE id = ? AND tenant_id = ? AND status = 'pending'`
+    ).bind(feeId, tenantId).run();
+    if (!result.meta.changes) {
+      return json({ error: 'Fee not found, or it has already been charged' }, 404);
+    }
+    return json({ ok: true });
+  }
+
   // ---- Tenant-scoped (own tenant, or admin) ----
 
   const tenantMatch = path.match(/^\/tenants\/(\d+|me)$/);
@@ -505,11 +573,12 @@ ${emailButton(link, 'Sign in to Legacy Property Hub')}
     const tenant = await loadTenant(env, access.tenantId);
     if (!tenant) return json({ error: 'not found' }, 404);
     const late = await lateFeeInfo(env, tenant);
+    const extraFees = await pendingFeesFor(env, tenant.id);
     const payments = await env.DB.prepare(
       `SELECT id, amount_cents, status, period_label, method, receipt_url, created_at, paid_at
        FROM payments WHERE tenant_id = ? ORDER BY created_at DESC`
     ).bind(tenant.id).all();
-    return json({ tenant: tenantSummary(tenant, late), payments: payments.results });
+    return json({ tenant: tenantSummary(tenant, late, extraFees), payments: payments.results });
   }
 
   const paymentsMatch = path.match(/^\/tenants\/(\d+|me)\/payments$/);
@@ -580,8 +649,14 @@ ${issueStartedOn ? `<p><strong>Issue started:</strong> ${escapeHtml(issueStarted
     }
 
     const late = await lateFeeInfo(env, tenant);
-    const amountCents = tenant.rent_amount_cents + (late.lateFeeApplies ? late.lateFeeCents : 0);
+    const extraFees = await pendingFeesFor(env, tenant.id);
+    const extraFeesCents = extraFees.reduce((sum, f) => sum + f.amount_cents, 0);
+    const amountCents = tenant.rent_amount_cents + (late.lateFeeApplies ? late.lateFeeCents : 0) + extraFeesCents;
     const periodLabel = currentPeriodLabel(tenant.due_day);
+
+    const descriptionParts = [`Rent - ${tenant.unit_label || tenant.full_name}`];
+    if (late.lateFeeApplies) descriptionParts.push('includes late fee');
+    if (extraFees.length) descriptionParts.push(extraFees.map((f) => f.label).join(', '));
 
     // Embedded custom checkout (Stripe Elements' Payment Element) rather
     // than a redirect to a Stripe-hosted Checkout page -- the client
@@ -597,8 +672,14 @@ ${issueStartedOn ? `<p><strong>Issue started:</strong> ${escapeHtml(issueStarted
       // any Dashboard email setting. We only want the one branded email
       // this app sends (which already links to Stripe's hosted receipt
       // page via receipt_url once the payment succeeds).
-      description: `Rent - ${tenant.unit_label || tenant.full_name}` + (late.lateFeeApplies ? ' (includes late fee)' : ''),
-      metadata: { tenant_id: String(tenant.id), period_label: periodLabel },
+      description: descriptionParts.join(' + '),
+      // fee_ids lets the webhook mark exactly the fees included in THIS
+      // charge as applied once it succeeds -- not any fee added after.
+      metadata: {
+        tenant_id: String(tenant.id),
+        period_label: periodLabel,
+        fee_ids: extraFees.map((f) => f.id).join(','),
+      },
     });
 
     await env.DB.prepare(
@@ -669,10 +750,27 @@ async function handleStripeWebhook(request, env) {
     ).bind(receiptUrl, pi.id).run();
 
     const paid = await env.DB.prepare(
-      `SELECT p.amount_cents, p.period_label, p.receipt_url, t.email, t.full_name, t.unit_label
+      `SELECT p.id, p.amount_cents, p.period_label, p.receipt_url, t.email, t.full_name, t.unit_label
        FROM payments p JOIN tenants t ON t.id = p.tenant_id
        WHERE p.stripe_payment_intent_id = ?`
     ).bind(pi.id).first();
+
+    // Mark exactly the one-time fees that were included in this charge
+    // (recorded on the PaymentIntent's metadata when it was created) as
+    // applied, now that it's actually succeeded -- never before then, so
+    // an abandoned/failed attempt leaves the fee pending for next time.
+    const feeIds = (pi.metadata && pi.metadata.fee_ids)
+      ? pi.metadata.fee_ids.split(',').map((s) => s.trim()).filter(Boolean)
+      : [];
+    if (paid && feeIds.length) {
+      for (const feeId of feeIds) {
+        await env.DB.prepare(
+          `UPDATE tenant_fees SET status = 'applied', applied_at = datetime('now'), applied_payment_id = ?
+           WHERE id = ? AND status = 'pending'`
+        ).bind(paid.id, feeId).run();
+      }
+    }
+
     if (paid && paid.email) {
       const firstName = paid.full_name ? paid.full_name.split(' ')[0] : 'there';
       await sendEmail(env, {

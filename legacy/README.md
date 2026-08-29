@@ -86,6 +86,25 @@ who has an account.
      "ALTER TABLE payments ADD COLUMN receipt_url TEXT;"
    ```
 
+   And if it predates `tenant_fees` (one-time fees an admin adds from
+   Admin -> a tenant's detail view, separate from the recurring late fee
+   -- each has its own label and only gets charged once, on that
+   tenant's next payment):
+   ```
+   npx wrangler d1 execute legacy_property_hub_db --remote --command \
+     "CREATE TABLE IF NOT EXISTS tenant_fees (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        tenant_id INTEGER NOT NULL REFERENCES tenants(id),
+        label TEXT NOT NULL,
+        amount_cents INTEGER NOT NULL,
+        status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'applied')),
+        created_at TEXT NOT NULL DEFAULT (datetime('now')),
+        applied_at TEXT,
+        applied_payment_id INTEGER REFERENCES payments(id)
+      );
+      CREATE INDEX IF NOT EXISTS idx_tenant_fees_tenant ON tenant_fees(tenant_id, status);"
+   ```
+
 5. **Set up Stripe** (test mode to start). Payments use a custom embedded
    checkout -- Stripe Elements' Payment Element, mounted directly on the
    Payments page -- not a redirect to a Stripe-hosted Checkout page, so

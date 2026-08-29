@@ -63,6 +63,7 @@
     $('editRentBtn').addEventListener('click', openRentEditor);
     $('saveRentBtn').addEventListener('click', saveRentEdit);
     $('cancelRentBtn').addEventListener('click', closeRentEditor);
+    $('addFeeBtn').addEventListener('click', addFee);
     loadTenants();
   }
 
@@ -182,6 +183,7 @@
         $('rentAmountInput').value = (currentTenantData.rentAmountCents / 100).toFixed(2);
         $('lateFeeInput').value = (currentTenantData.lateFeeCents / 100).toFixed(2);
         $('lateFeeAfterDayInput').value = currentTenantData.lateFeeAfterDay || '';
+        renderFeeList();
         $('editRentBtn').hidden = true;
         $('rentEditForm').hidden = false;
       })
@@ -197,6 +199,113 @@
     $('editRentBtn').hidden = false;
     $('editRentBtn').disabled = false;
     $('rentEditStatus').hidden = true;
+    $('feeAddStatus').hidden = true;
+    $('feeLabelInput').value = '';
+    $('feeAmountInput').value = '';
+  }
+
+  function renderFeeList() {
+    var fees = (currentTenantData && currentTenantData.extraFees) || [];
+    if (!fees.length) {
+      $('feeList').innerHTML = '<li style="color:var(--muted);">No pending fees.</li>';
+      return;
+    }
+    $('feeList').innerHTML = fees.map(function (f) {
+      return '<li><span>' + esc(f.label) + ' &mdash; ' + money(f.amountCents) +
+        '</span><button type="button" class="fee-remove" data-fee-id="' + f.id + '">Remove</button></li>';
+    }).join('');
+    document.querySelectorAll('#feeList .fee-remove').forEach(function (btn) {
+      btn.addEventListener('click', function () { removeFee(btn.dataset.feeId); });
+    });
+  }
+
+  // Re-fetches just the tenant (for its current extraFees) without
+  // disturbing whatever the admin has typed into the rent/late-fee
+  // fields above -- add/remove fee shouldn't blow away an in-progress
+  // rent edit.
+  function reloadTenantFees() {
+    return fetch('/legacy/api/tenants/' + currentTenantId)
+      .then(function (r) { return r.json(); })
+      .then(function (data) {
+        currentTenantData = data.tenant;
+        renderFeeList();
+      })
+      .catch(function () {});
+  }
+
+  function addFee() {
+    var label = $('feeLabelInput').value.trim();
+    var dollars = parseFloat($('feeAmountInput').value);
+
+    if (!label) {
+      $('feeAddStatus').textContent = 'Enter a label for this fee.';
+      $('feeAddStatus').hidden = false;
+      return;
+    }
+    if (label.length > 80) {
+      $('feeAddStatus').textContent = 'Label must be 80 characters or fewer.';
+      $('feeAddStatus').hidden = false;
+      return;
+    }
+    if (!(dollars > 0)) {
+      $('feeAddStatus').textContent = 'Enter a valid amount.';
+      $('feeAddStatus').hidden = false;
+      return;
+    }
+
+    var amountCents = Math.round(dollars * 100);
+    var name = currentTenantData ? currentTenantData.fullName : 'this tenant';
+
+    if (!window.confirm('Add "' + label + '" (' + money(amountCents) + ') to ' + name + '\'s next payment?')) {
+      return;
+    }
+    if (!window.confirm('Please confirm once more to add this fee for ' + name + '.')) {
+      return;
+    }
+
+    $('addFeeBtn').disabled = true;
+    $('feeAddStatus').hidden = true;
+
+    fetch('/legacy/api/tenants/' + currentTenantId + '/fees', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ label: label, amountCents: amountCents }),
+    })
+      .then(function (r) { return r.json().then(function (d) { return { ok: r.ok, data: d }; }); })
+      .then(function (res) {
+        $('addFeeBtn').disabled = false;
+        if (!res.ok) {
+          $('feeAddStatus').textContent = res.data.error || 'Could not add fee.';
+          $('feeAddStatus').hidden = false;
+          return;
+        }
+        $('feeLabelInput').value = '';
+        $('feeAmountInput').value = '';
+        reloadTenantFees();
+      })
+      .catch(function () {
+        $('addFeeBtn').disabled = false;
+        $('feeAddStatus').textContent = 'Something went wrong. Please try again.';
+        $('feeAddStatus').hidden = false;
+      });
+  }
+
+  function removeFee(feeId) {
+    if (!window.confirm('Remove this fee before it\'s charged?')) return;
+    fetch('/legacy/api/tenants/' + currentTenantId + '/fees/' + feeId, { method: 'DELETE' })
+      .then(function (r) { return r.json().then(function (d) { return { ok: r.ok, data: d }; }); })
+      .then(function (res) {
+        if (!res.ok) {
+          $('feeAddStatus').textContent = res.data.error || 'Could not remove fee.';
+          $('feeAddStatus').hidden = false;
+          return;
+        }
+        reloadTenantFees();
+      })
+      .catch(function () {
+        $('feeAddStatus').textContent = 'Something went wrong. Please try again.';
+        $('feeAddStatus').hidden = false;
+      });
   }
 
   function ordinal(n) {

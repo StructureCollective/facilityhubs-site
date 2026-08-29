@@ -70,3 +70,22 @@ CREATE TABLE IF NOT EXISTS login_tokens (
 );
 
 CREATE INDEX IF NOT EXISTS idx_login_tokens_expires ON login_tokens(expires_at);
+
+-- One-time fees an admin adds for a tenant (a custom label + amount --
+-- distinct from the recurring late fee on `tenants`, which fires
+-- automatically past a day-of-month cutoff). A 'pending' fee is added to
+-- the total on the tenant's *next* Stripe payment, then flipped to
+-- 'applied' once that payment succeeds -- it's never added twice, and
+-- never rewrites amounts already on a `payments` row.
+CREATE TABLE IF NOT EXISTS tenant_fees (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  tenant_id INTEGER NOT NULL REFERENCES tenants(id),
+  label TEXT NOT NULL,
+  amount_cents INTEGER NOT NULL,
+  status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'applied')),
+  created_at TEXT NOT NULL DEFAULT (datetime('now')),
+  applied_at TEXT,
+  applied_payment_id INTEGER REFERENCES payments(id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_tenant_fees_tenant ON tenant_fees(tenant_id, status);

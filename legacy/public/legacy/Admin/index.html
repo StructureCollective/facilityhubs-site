@@ -72,6 +72,19 @@
   }
   .rent-edit-note { color: var(--muted); font-size: .82rem; margin: 4px 0 14px; }
   .rent-edit-actions { display: flex; gap: 10px; }
+  .rent-edit-divider { border-top: 1px solid var(--line); margin: 20px 0 16px; }
+  .rent-edit-subhead { font-family: var(--font-head); font-size: 1rem; margin: 0 0 4px; color: var(--navy); }
+  .fee-list { list-style: none; padding: 0; margin: 10px 0 16px; }
+  .fee-list li {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 9px 0; border-bottom: 1px solid var(--line); font-size: .88rem;
+  }
+  .fee-list li:last-child { border-bottom: none; }
+  .fee-remove {
+    color: var(--muted); background: none; border: none; font-size: .78rem;
+    font-weight: 700; cursor: pointer; text-decoration: underline; padding: 0;
+  }
+  .fee-remove:hover { color: #9a2f24; }
 </style>
 </head>
 <body>
@@ -145,6 +158,19 @@
 <div class="rent-edit-actions">
 <button class="btn gold" id="saveRentBtn">Save Changes</button>
 <button class="btn" id="cancelRentBtn" type="button" style="background:#fff;color:var(--navy);border:1.5px solid var(--line-strong);">Cancel</button>
+</div>
+
+<div class="rent-edit-divider"></div>
+<h3 class="rent-edit-subhead">One-time fees</h3>
+<p class="rent-edit-note">Added on top of rent for this tenant's next payment only -- kept separate from the late fee above, and never charged twice.</p>
+<ul id="feeList" class="fee-list"></ul>
+<div class="field-row">
+<div class="field"><label>Fee label</label><input type="text" id="feeLabelInput" maxlength="80" placeholder="e.g. Pet deposit"></div>
+<div class="field"><label>Amount ($)</label><input type="number" id="feeAmountInput" step="0.01" min="0"></div>
+</div>
+<div id="feeAddStatus" class="notice error" hidden></div>
+<div class="rent-edit-actions">
+<button class="btn gold" id="addFeeBtn" type="button">Add Fee</button>
 </div>
 </div>
 </div>
