@@ -742,7 +742,8 @@ async function handleApi(request, env, url) {
     const access = await resolveTenantAccess(request, env, receiptMatch[1]);
     if (access.error) return access.error;
     const payment = await env.DB.prepare(
-      `SELECT p.id, p.amount_cents, p.status, p.period_label, p.method, p.paid_at, t.full_name, t.unit_label
+      `SELECT p.id, p.amount_cents, p.status, p.period_label, p.method, p.paid_at,
+              p.rent_amount_cents, p.late_fee_cents, t.full_name, t.unit_label
        FROM payments p JOIN tenants t ON t.id = p.tenant_id
        WHERE p.id = ? AND p.tenant_id = ?`
     ).bind(receiptMatch[2], access.tenantId).first();
@@ -750,7 +751,14 @@ async function handleApi(request, env, url) {
     if (payment.status !== 'succeeded') {
       return json({ error: 'A receipt is only available for a succeeded payment.' }, 400);
     }
-    const pdfBytes = await generateReceiptPdf(payment, { env, request });
+    // One-time fees included in this specific payment -- linked via
+    // applied_payment_id when the webhook marked them applied (see
+    // handleStripeWebhook above). Works for old payments too, since this
+    // link has existed since tenant_fees was added.
+    const feeItems = await env.DB.prepare(
+      `SELECT label, amount_cents FROM tenant_fees WHERE applied_payment_id = ? ORDER BY created_at`
+    ).bind(payment.id).all();
+    const pdfBytes = await generateReceiptPdf(payment, feeItems.results, { env, request });
     return new Response(pdfBytes, {
       status: 200,
       headers: {
@@ -846,9 +854,16 @@ async function handleApi(request, env, url) {
     });
 
     await env.DB.prepare(
-      `INSERT INTO payments (tenant_id, amount_cents, status, stripe_payment_intent_id, period_label)
-       VALUES (?, ?, 'pending', ?, ?)`
-    ).bind(tenant.id, amountCents, paymentIntent.id, periodLabel).run();
+      `INSERT INTO payments (tenant_id, amount_cents, status, stripe_payment_intent_id, period_label, rent_amount_cents, late_fee_cents)
+       VALUES (?, ?, 'pending', ?, ?, ?, ?)`
+    ).bind(
+      tenant.id,
+      amountCents,
+      paymentIntent.id,
+      periodLabel,
+      tenant.rent_amount_cents,
+      late.lateFeeApplies ? late.lateFeeCents : 0
+    ).run();
 
     return json({ clientSecret: paymentIntent.client_secret });
   }

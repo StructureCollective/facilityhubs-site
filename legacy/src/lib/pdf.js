@@ -6,6 +6,12 @@
 // -- see that route in src/index.js. Nothing here depends on Stripe's own
 // hosted receipt page, so this works the same for a card/bank payment
 // (method: 'stripe') and a manually-recorded one (method: 'direct').
+//
+// Itemized charges: rent and late fee come from payment.rent_amount_cents /
+// payment.late_fee_cents, captured at charge-creation time (NULL on
+// payments made before those columns existed -- see schema.sql). One-time
+// fees come from the caller's `feeItems` (tenant_fees rows linked via
+// applied_payment_id), which works for old and new payments alike.
 
 import { PDFDocument, StandardFonts, rgb } from 'pdf-lib';
 
@@ -49,7 +55,7 @@ function formatDate(iso) {
   }
 }
 
-export async function generateReceiptPdf(payment, { env, request } = {}) {
+export async function generateReceiptPdf(payment, feeItems = [], { env, request } = {}) {
   const pdf = await PDFDocument.create();
   const font = await pdf.embedFont(StandardFonts.Helvetica);
   const bold = await pdf.embedFont(StandardFonts.HelveticaBold);
@@ -133,9 +139,53 @@ export async function generateReceiptPdf(payment, { env, request } = {}) {
     thickness: 1,
     color: LINE_GRAY,
   });
-  y -= 10;
+  y -= 22;
 
-  row('Amount paid', money(payment.amount_cents), { size: 16, bold: true, color: NAVY, gap: 30 });
+  // ---- Itemized charges ----
+  const feeTotalCents = (feeItems || []).reduce((sum, f) => sum + f.amount_cents, 0);
+  const charges = [];
+  if (payment.rent_amount_cents != null) {
+    charges.push({ label: 'Rent', amountCents: payment.rent_amount_cents });
+    if (payment.late_fee_cents) {
+      charges.push({ label: 'Late fee', amountCents: payment.late_fee_cents });
+    }
+  } else {
+    // Predates the rent_amount_cents/late_fee_cents columns -- rent and
+    // any late fee were never recorded separately, so show what's left
+    // after known one-time fees as a single line rather than guessing.
+    charges.push({ label: 'Rent', amountCents: payment.amount_cents - feeTotalCents });
+  }
+  for (const f of (feeItems || [])) {
+    charges.push({ label: f.label, amountCents: f.amount_cents });
+  }
+
+  function chargeLine(label, amountCents, opts = {}) {
+    const size = opts.size || 10.5;
+    const lineFont = opts.bold ? bold : font;
+    const color = opts.color || INK;
+    page.drawText(String(label), { x: MARGIN, y, size, font: lineFont, color });
+    const amountText = money(amountCents);
+    const amountWidth = lineFont.widthOfTextAtSize(amountText, size);
+    page.drawText(amountText, { x: PAGE_SIZE[0] - MARGIN - amountWidth, y, size, font: lineFont, color });
+    y -= opts.gap || 20;
+  }
+
+  page.drawText('Charges', { x: MARGIN, y, size: 9, font: bold, color: MUTED });
+  y -= 18;
+  for (const charge of charges) {
+    chargeLine(charge.label, charge.amountCents);
+  }
+
+  y -= 4;
+  page.drawLine({
+    start: { x: MARGIN, y: y + 12 },
+    end: { x: PAGE_SIZE[0] - MARGIN, y: y + 12 },
+    thickness: 1,
+    color: LINE_GRAY,
+  });
+  y -= 26;
+
+  chargeLine('Amount paid', payment.amount_cents, { size: 16, bold: true, color: NAVY, gap: 30 });
 
   // ---- Footer ----
   const footerY = MARGIN;

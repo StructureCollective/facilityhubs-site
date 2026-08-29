@@ -21,6 +21,15 @@ CREATE TABLE IF NOT EXISTS payments (
   amount_cents INTEGER NOT NULL,
   status TEXT NOT NULL DEFAULT 'pending',
   period_label TEXT,
+  -- Breakdown of amount_cents, captured at charge-creation time so the
+  -- PDF receipt (src/lib/pdf.js) can itemize rent vs. late fee instead of
+  -- showing one lump sum. NULL on payments created before these columns
+  -- existed -- the receipt falls back to a single "Rent" line for those.
+  -- One-time fees aren't duplicated here; they're reconstructed from
+  -- tenant_fees.applied_payment_id instead, which already works for
+  -- payments old and new.
+  rent_amount_cents INTEGER,
+  late_fee_cents INTEGER,
   -- 'stripe' for a payment made through this app's Stripe Checkout;
   -- 'direct' for one collected outside the app (cash, check, handed
   -- directly to the landlord) and recorded here after the fact.
