@@ -53,7 +53,7 @@ function escapeHtml(v) {
 // RESEND_API_KEY secret (`wrangler secret put RESEND_API_KEY`) -- until
 // that's set, this quietly no-ops rather than breaking the payment or
 // maintenance-request flow that triggered it.
-async function sendEmail(env, { to, subject, html, replyTo }) {
+export async function sendEmail(env, { to, subject, html, replyTo }) {
   if (!env.RESEND_API_KEY) return;
   try {
     const res = await fetch('https://api.resend.com/emails', {
@@ -96,7 +96,7 @@ async function sendEmail(env, { to, subject, html, replyTo }) {
 const EMAIL_ICON_URL = 'https://facilityhubs.com/assets/legacy-icon.png';
 const EMAIL_LOGO_URL = 'https://facilityhubs.com/assets/legacy-logo.png';
 
-function emailShell(bodyHtml) {
+export function emailShell(bodyHtml) {
   return `<div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,sans-serif;max-width:480px;margin:0 auto;">
 <div style="background:#ffffff;padding:20px 24px;text-align:center;border:1px solid #d7dbe3;border-bottom:3px solid #d4a62a;border-radius:14px 14px 0 0;">
 <img src="${EMAIL_ICON_URL}" alt="Legacy Property Hub" style="height:60px;display:block;margin:0 auto;">
@@ -111,10 +111,49 @@ ${bodyHtml}
 </div>`;
 }
 
-function emailButton(url, label) {
+export function emailButton(url, label) {
   return `<div style="text-align:center;margin:22px 0;">
 <a href="${url}" style="display:inline-block;background:#0d2b5c;color:#ffffff;text-decoration:none;font-weight:700;padding:13px 26px;border-radius:999px;font-size:15px;">${label}</a>
 </div>`;
+}
+
+// The 3 outgoing email bodies below are pulled out as their own named,
+// exported functions (rather than inline template literals at each
+// sendEmail() call site) so a standalone test script can import and
+// render the exact real templates -- see scripts/send-test-email.js.
+
+export function signInEmailBody(link) {
+  return emailShell(`<p>Click below to sign in to Legacy Property Hub. This link expires in 15 minutes and can only be used once.</p>
+${emailButton(link, 'Sign in to Legacy Property Hub')}
+<p style="color:#5b6478;font-size:13px;">If you didn't request this, you can safely ignore this email.</p>`);
+}
+
+export function maintenanceRequestEmailBody({ tenant, issueType, issueStartedOn, description }) {
+  return emailShell(`<p><strong>Tenant:</strong> ${escapeHtml(tenant.full_name)}${tenant.unit_label ? ` (${escapeHtml(tenant.unit_label)})` : ''}</p>
+<p><strong>Email:</strong> ${escapeHtml(tenant.email)}</p>
+<p><strong>Type:</strong> ${escapeHtml(issueType)}</p>
+${issueStartedOn ? `<p><strong>Issue started:</strong> ${escapeHtml(issueStartedOn)}</p>` : ''}
+<p><strong>Request:</strong></p>
+<p>${escapeHtml(description)}</p>`);
+}
+
+export function paymentReceivedEmailBody(paid) {
+  const firstName = paid.full_name ? paid.full_name.split(' ')[0] : 'there';
+  return emailShell(`<p>Hi ${escapeHtml(firstName)},</p>
+<p>We've received your rent payment${paid.unit_label ? ` for ${escapeHtml(paid.unit_label)}` : ''}.</p>
+<p><strong>Amount:</strong> $${(paid.amount_cents / 100).toFixed(2)}<br>
+<strong>Period:</strong> ${escapeHtml(paid.period_label || '')}</p>
+${paid.receipt_url ? emailButton(paid.receipt_url, 'View / download receipt') : ''}
+<p>Thank you,<br>Legacy Property Hub</p>`);
+}
+
+// Internal-only admin notice, sent to legacy@facilityhubs.com alongside
+// paymentReceivedEmailBody() above -- not shown to the tenant.
+export function paymentReceivedAdminEmailBody(paid) {
+  return emailShell(`<p><strong>Tenant:</strong> ${escapeHtml(paid.full_name || 'Unknown')}${paid.unit_label ? ` (${escapeHtml(paid.unit_label)})` : ''}</p>
+<p><strong>Amount:</strong> $${(paid.amount_cents / 100).toFixed(2)}<br>
+<strong>Period:</strong> ${escapeHtml(paid.period_label || '')}</p>
+${emailButton('https://facilityhubs.com/legacy/Admin/', 'View in Admin Dashboard')}`);
 }
 
 // ---------------------------------------------------------------------
@@ -427,9 +466,7 @@ async function handleApi(request, env, url) {
         await sendEmail(env, {
           to: sendTo,
           subject: 'Sign in to Legacy Property Hub',
-          html: emailShell(`<p>Click below to sign in to Legacy Property Hub. This link expires in 15 minutes and can only be used once.</p>
-${emailButton(link, 'Sign in to Legacy Property Hub')}
-<p style="color:#5b6478;font-size:13px;">If you didn't request this, you can safely ignore this email.</p>`),
+          html: signInEmailBody(link),
         });
       }
     }
@@ -716,12 +753,7 @@ ${emailButton(link, 'Sign in to Legacy Property Hub')}
       to: 'legacy@facilityhubs.com',
       subject: `Maintenance request - ${tenant.unit_label || tenant.full_name}`,
       replyTo: tenant.email,
-      html: emailShell(`<p><strong>Tenant:</strong> ${escapeHtml(tenant.full_name)}${tenant.unit_label ? ` (${escapeHtml(tenant.unit_label)})` : ''}</p>
-<p><strong>Email:</strong> ${escapeHtml(tenant.email)}</p>
-<p><strong>Type:</strong> ${escapeHtml(issueType)}</p>
-${issueStartedOn ? `<p><strong>Issue started:</strong> ${escapeHtml(issueStartedOn)}</p>` : ''}
-<p><strong>Request:</strong></p>
-<p>${escapeHtml(description)}</p>`),
+      html: maintenanceRequestEmailBody({ tenant, issueType, issueStartedOn, description }),
     });
 
     return json({ ok: true });
@@ -861,16 +893,20 @@ async function handleStripeWebhook(request, env) {
     }
 
     if (paid && paid.email) {
-      const firstName = paid.full_name ? paid.full_name.split(' ')[0] : 'there';
       await sendEmail(env, {
         to: paid.email,
         subject: 'Payment received - Legacy Property Hub',
-        html: emailShell(`<p>Hi ${escapeHtml(firstName)},</p>
-<p>We've received your rent payment${paid.unit_label ? ` for ${escapeHtml(paid.unit_label)}` : ''}.</p>
-<p><strong>Amount:</strong> $${(paid.amount_cents / 100).toFixed(2)}<br>
-<strong>Period:</strong> ${escapeHtml(paid.period_label || '')}</p>
-${paid.receipt_url ? emailButton(paid.receipt_url, 'View / download receipt') : ''}
-<p>Thank you,<br>Legacy Property Hub</p>`),
+        html: paymentReceivedEmailBody(paid),
+      });
+    }
+
+    // Admin heads-up -- separate from the tenant confirmation above, and
+    // not gated on paid.email since it doesn't need the tenant's address.
+    if (paid) {
+      await sendEmail(env, {
+        to: 'legacy@facilityhubs.com',
+        subject: `Payment received - ${paid.unit_label || paid.full_name || 'Tenant'}`,
+        html: paymentReceivedAdminEmailBody(paid),
       });
     }
   } else if (event.type === 'payment_intent.payment_failed' || event.type === 'payment_intent.canceled') {

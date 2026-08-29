@@ -6,7 +6,8 @@
     "dev": "wrangler dev",
     "deploy": "wrangler deploy",
     "db:migrate:local": "wrangler d1 execute legacy_property_hub_db --local --file=./schema.sql",
-    "db:migrate:remote": "wrangler d1 execute legacy_property_hub_db --remote --file=./schema.sql"
+    "db:migrate:remote": "wrangler d1 execute legacy_property_hub_db --remote --file=./schema.sql",
+    "test:email": "node scripts/send-test-email.js"
   },
   "devDependencies": {
     "wrangler": "^3.90.0"
