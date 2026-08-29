@@ -2,23 +2,28 @@
 
 Serves `facilityhubs.com/legacy*`.
 
-## Current status: Google Sign-In is OFF
+## Auth: passwordless email magic links
 
-At your request, Google Sign-In has been pulled out for now, so **every
-page and every API endpoint under `/legacy/*` is open to anyone with the
-link** -- there is no per-tenant or admin access control right now. That's
-fine for previewing/testing the UI and Stripe flow, but it needs to be
-back in place before real tenants or real rent money touch this.
+Tenants and admins sign in with just their email -- no Google account
+required, no password to manage. On the landing page (`/legacy/`) they
+enter their email; if it matches a row in `tenants` or `admins`, a
+one-time sign-in link is emailed to them (via Resend) and they're signed
+in for 30 days after clicking it. The response is identical whether or
+not the email matched, so the sign-in form can't be used to figure out
+who has an account.
 
-- The Dashboard reads which tenant to show from `?tenant_id=N` in the URL
-  (with a simple picker if that's missing) instead of a signed-in session.
-- The Admin view and all `/legacy/api/*` endpoints have no access check.
-- `src/index.js` has a comment block at the top explaining exactly
-  what to restore (Google ID token verification against the `admins` /
-  `tenants` D1 tables) and where a prior working version lived, when
-  you're ready.
-- The D1 schema (`admins`, `tenants`, `payments`) is unchanged -- nothing
-  about the data model needs to change to bring auth back.
+- Every tenant/admin API route under `/legacy/api/*` is gated on a
+  signed session cookie -- an admin can reach any tenant's data, a
+  tenant can only reach their own (including via the `/tenants/me`
+  shorthand the frontend uses).
+- Magic-link tokens live in the `login_tokens` D1 table: random,
+  single-use, 15-minute expiry. The session itself is a signed JWT
+  (HS256, via the `jose` package) in an `HttpOnly` cookie, good for 30
+  days.
+- To sign in as an admin, your email needs a row in the `admins` table
+  (see step 6 below) -- there's no self-serve admin signup.
+- To sign in as a tenant, the email needs to match `tenants.email`
+  exactly (case-insensitive).
 
 ## One-time setup
 
@@ -56,6 +61,24 @@ back in place before real tenants or real rent money touch this.
    (`rent_amount_cents` is in cents, e.g. `150000` = $1,500.00. `due_day`
    is 1-28.)
 
+   If you're adding auth to a database that predates it (i.e. you ran
+   `db:migrate:remote` before the `login_tokens` table existed in
+   `schema.sql`), run this once to add just that table without touching
+   existing data -- `CREATE TABLE IF NOT EXISTS` makes it safe to run
+   even if it's already there:
+   ```
+   npx wrangler d1 execute legacy_property_hub_db --remote --command \
+     "CREATE TABLE IF NOT EXISTS login_tokens (
+        token TEXT PRIMARY KEY NOT NULL,
+        subject_type TEXT NOT NULL CHECK (subject_type IN ('tenant', 'admin')),
+        subject TEXT NOT NULL,
+        expires_at TEXT NOT NULL,
+        used_at TEXT,
+        created_at TEXT NOT NULL DEFAULT (datetime('now'))
+      );
+      CREATE INDEX IF NOT EXISTS idx_login_tokens_expires ON login_tokens(expires_at);"
+   ```
+
 5. **Set up Stripe** (test mode to start):
    - Get your test **Secret key** from the Stripe Dashboard -> Developers -> API keys.
    - Create a webhook endpoint at Developers -> Webhooks pointing to
@@ -69,7 +92,31 @@ back in place before real tenants or real rent money touch this.
      npx wrangler secret put STRIPE_WEBHOOK_SECRET
      ```
 
-6. **Deploy:**
+6. **Set up email sign-in (Resend + session secret):**
+   - Get your **API key** from the Resend dashboard and set it as a
+     Worker secret:
+     ```
+     npx wrangler secret put RESEND_API_KEY
+     ```
+     Resend also needs to be verified to send from `legacy@facilityhubs.com`
+     -- that's Cloudflare Email Routing + a Resend domain verification,
+     not something this repo controls. Payment-confirmation and
+     maintenance-notification emails use the same key.
+   - Generate a random session secret and set it as a Worker secret --
+     this signs the session cookie, so it should be long and random, and
+     changing it later instantly signs everyone out:
+     ```
+     npx wrangler secret put SESSION_SECRET
+     ```
+     A quick way to generate one: `openssl rand -base64 48`.
+   - Add yourself (or whoever should have Admin access) to the `admins`
+     table -- this is the only way in for Admin, there's no signup form:
+     ```
+     npx wrangler d1 execute legacy_property_hub_db --remote --command \
+       "INSERT INTO admins (email) VALUES ('you@example.com');"
+     ```
+
+7. **Deploy:**
    ```
    npm run deploy
    ```
@@ -86,8 +133,14 @@ wrangler d1 execute legacy_property_hub_db --local --file=./schema.sql
 wrangler dev
 ```
 
+Magic links won't actually send email locally unless `RESEND_API_KEY` is
+set for the dev environment too (`sendEmail()` silently no-ops without
+it) -- check the Worker logs for the generated link, or query
+`login_tokens` directly in the local D1 DB, and visit
+`http://localhost:8787/legacy/api/auth/verify?token=...` by hand.
+
 ## Managing tenants
 
 There's no admin UI for adding/editing tenants yet. Add or edit them
 directly in D1 (see the INSERT example above), or use
-`POST /legacy/api/tenants`.
+`POST /legacy/api/tenants` (requires an admin session).

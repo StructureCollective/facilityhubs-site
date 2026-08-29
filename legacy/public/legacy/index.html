@@ -82,8 +82,48 @@
   }
   .btn.primary { background: var(--navy); color: #fff; }
   .btn.primary:hover { background: #081c3f; }
+  .btn.primary:disabled { background: #9aa5bd; cursor: default; }
   .btn.secondary { background: #fff; color: var(--navy); border: 1.5px solid var(--line); }
   .btn.secondary:hover { border-color: var(--navy); }
+  .field {
+    text-align: left;
+    margin-bottom: 14px;
+  }
+  .field label {
+    display: block;
+    font-size: .8rem;
+    font-weight: 700;
+    color: var(--muted);
+    margin-bottom: 6px;
+  }
+  .field input {
+    width: 100%;
+    padding: 13px 16px;
+    border-radius: 10px;
+    border: 1.5px solid var(--line);
+    font-size: .95rem;
+    font-family: inherit;
+    color: var(--ink);
+  }
+  .field input:focus {
+    outline: none;
+    border-color: var(--navy);
+  }
+  .notice {
+    text-align: left;
+    border-radius: 10px;
+    padding: 12px 14px;
+    font-size: .85rem;
+    margin-bottom: 16px;
+    line-height: 1.45;
+  }
+  .notice.success { background: #eef7ef; color: #2a6b39; border: 1px solid #cfe8d3; }
+  .notice.error { background: #fdeeee; color: #9a2f2f; border: 1px solid #f3cccc; }
+  .sent-icon {
+    width: 48px; height: 48px; margin: 0 auto 14px; display: block;
+    border-radius: 50%; background: #eef7ef; color: #2a6b39;
+    align-items: center; justify-content: center; font-size: 1.4rem;
+  }
   footer {
     margin-top: 32px;
     font-size: .76rem;
@@ -108,9 +148,26 @@
     <h1>Legacy Property Hub</h1>
     <p class="slogan">Property with Purpose.<br>Value for Generations.</p>
 
-    <div class="actions">
-      <a class="btn primary" href="Dashboard/">Sign In</a>
-      <a class="btn secondary" href="mailto:legacy@facilityhubs.com">Contact Us</a>
+    <div id="errorNotice" class="notice error" hidden></div>
+
+    <div id="signinView">
+      <form id="emailForm" class="actions" novalidate>
+        <div class="field">
+          <label for="emailInput">Email address</label>
+          <input type="email" id="emailInput" name="email" placeholder="you@example.com" autocomplete="email" required>
+        </div>
+        <button type="submit" class="btn primary" id="submitBtn">Send Sign-In Link</button>
+        <a class="btn secondary" href="mailto:legacy@facilityhubs.com">Contact Us</a>
+      </form>
+    </div>
+
+    <div id="sentView" hidden>
+      <div class="notice success">
+        <strong>Check your email.</strong> If that address is on file, we've sent a one-time sign-in link. It expires in 15 minutes.
+      </div>
+      <div class="actions">
+        <a class="btn secondary" href="mailto:legacy@facilityhubs.com">Contact Us</a>
+      </div>
     </div>
   </div>
 
@@ -120,5 +177,7 @@
       Built by Structure Collective
     </a>
   </footer>
+
+  <script src="app.js"></script>
 </body>
 </html>

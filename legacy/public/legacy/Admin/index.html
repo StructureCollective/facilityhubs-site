@@ -27,7 +27,9 @@
 </style>
 </head>
 <body>
-<div id="app" class="topbar-shell">
+<div id="loadingMsg" class="loading">Loading&hellip;</div>
+
+<div id="app" class="topbar-shell" hidden>
 <div class="topbar">
 <img src="/assets/legacy-logo.png" alt="Legacy Property Hub">
 </div>
@@ -41,7 +43,7 @@
 <a class="active" id="navTenants" aria-current="page">Tenants</a>
 <a id="navMaintenance">Maintenance Requests</a>
 <div class="divider"></div>
-<a href="/legacy/">Sign Out</a>
+<a href="/legacy/" id="signOutLink">Sign Out</a>
 </nav>
 </aside>
 <main>

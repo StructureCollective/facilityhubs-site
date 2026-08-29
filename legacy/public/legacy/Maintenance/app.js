@@ -1,10 +1,9 @@
 /*
- * Tenant maintenance requests page -- TEMPORARY no-auth mode (see
- * src/index.js header). Which tenant to show comes from ?tenant_id=N.
+ * Tenant maintenance requests page. Tenant identity comes from the
+ * signed-in session (GET /legacy/api/tenants/me) rather than ?tenant_id=.
  */
 (function () {
   const $ = function (id) { return document.getElementById(id); };
-  let tenantId = null;
 
   function fmtDate(iso) {
     if (!iso) return '';
@@ -26,18 +25,25 @@
     return esc(label.slice(0, idx).trim()) + '<br>' + esc(label.slice(idx + 1).trim());
   }
 
-  document.addEventListener('DOMContentLoaded', function () {
-    tenantId = new URLSearchParams(location.search).get('tenant_id');
-    if (!tenantId) {
-      $('loadingMsg').innerHTML = 'No tenant selected. <a href="../Dashboard/">Go to Dashboard</a> to pick one.';
-      return;
-    }
+  function signOut(e) {
+    if (e) e.preventDefault();
+    fetch('/legacy/api/auth/logout', { method: 'POST' })
+      .catch(function () {})
+      .then(function () { location.href = '/legacy/'; });
+  }
 
-    fetch('/legacy/api/tenants/' + encodeURIComponent(tenantId))
-      .then(function (r) { return r.json().then(function (d) { return { ok: r.ok, data: d }; }); })
+  document.addEventListener('DOMContentLoaded', function () {
+    $('signOutLink').addEventListener('click', signOut);
+
+    fetch('/legacy/api/tenants/me')
+      .then(function (r) { return r.json().then(function (d) { return { ok: r.ok, status: r.status, data: d }; }); })
       .then(function (res) {
+        if (res.status === 401) {
+          location.href = '/legacy/';
+          return;
+        }
         if (!res.ok) {
-          $('loadingMsg').textContent = 'Tenant not found.';
+          $('loadingMsg').textContent = 'Could not load this page. Please reload.';
           return;
         }
         $('greeting').textContent = 'Hi, ' + (res.data.tenant.fullName ? res.data.tenant.fullName.split(' ')[0] : 'there');
@@ -58,7 +64,7 @@
       }
       $('submitBtn').disabled = true;
       $('submitStatus').textContent = 'Submitting…';
-      fetch('/legacy/api/tenants/' + encodeURIComponent(tenantId) + '/maintenance', {
+      fetch('/legacy/api/tenants/me/maintenance', {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({ description: description }),
@@ -82,7 +88,7 @@
   });
 
   function loadRequests() {
-    return fetch('/legacy/api/tenants/' + encodeURIComponent(tenantId) + '/maintenance')
+    return fetch('/legacy/api/tenants/me/maintenance')
       .then(function (r) { return r.json(); })
       .then(function (data) { renderRequests(data.requests || []); })
       .catch(function () {

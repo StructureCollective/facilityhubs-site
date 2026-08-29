@@ -1,7 +1,8 @@
 /*
- * Tenant dashboard overview -- TEMPORARY no-auth mode (see src/index.js
- * header). Which tenant to show comes from ?tenant_id=N in the URL
- * instead of a signed-in session.
+ * Tenant dashboard overview. Tenant identity comes from the signed-in
+ * session (a legacy_session cookie) rather than a ?tenant_id= URL param
+ * -- GET /legacy/api/tenants/me resolves to whichever tenant is signed
+ * in. A 401 means there's no valid session, so we bounce to sign-in.
  */
 (function () {
   const $ = function (id) { return document.getElementById(id); };
@@ -30,22 +31,29 @@
     return esc(label.slice(0, idx).trim()) + '<br>' + esc(label.slice(idx + 1).trim());
   }
 
-  document.addEventListener('DOMContentLoaded', function () {
-    const tenantId = new URLSearchParams(location.search).get('tenant_id');
-    if (!tenantId) {
-      showPicker();
-      return;
-    }
+  function signOut(e) {
+    if (e) e.preventDefault();
+    fetch('/legacy/api/auth/logout', { method: 'POST' })
+      .catch(function () {})
+      .then(function () { location.href = '/legacy/'; });
+  }
 
-    fetch('/legacy/api/tenants/' + encodeURIComponent(tenantId))
-      .then(function (r) { return r.json().then(function (d) { return { ok: r.ok, data: d }; }); })
+  document.addEventListener('DOMContentLoaded', function () {
+    $('signOutLink').addEventListener('click', signOut);
+
+    fetch('/legacy/api/tenants/me')
+      .then(function (r) { return r.json().then(function (d) { return { ok: r.ok, status: r.status, data: d }; }); })
       .then(function (res) {
-        if (!res.ok) {
-          $('loadingMsg').textContent = 'Tenant not found.';
+        if (res.status === 401) {
+          location.href = '/legacy/';
           return;
         }
-        render(res.data, tenantId);
-        return fetch('/legacy/api/tenants/' + encodeURIComponent(tenantId) + '/maintenance')
+        if (!res.ok) {
+          $('loadingMsg').textContent = 'Could not load this dashboard. Please reload the page.';
+          return;
+        }
+        render(res.data);
+        return fetch('/legacy/api/tenants/me/maintenance')
           .then(function (r) { return r.json(); })
           .then(function (d) {
             const open = (d.requests || []).filter(function (r) { return r.status === 'open'; }).length;
@@ -57,28 +65,7 @@
       });
   });
 
-  function showPicker() {
-    fetch('/legacy/api/tenants')
-      .then(function (r) { return r.json(); })
-      .then(function (data) {
-        $('loadingMsg').hidden = true;
-        $('picker').hidden = false;
-        const tenants = data.tenants || [];
-        if (!tenants.length) {
-          $('pickerList').innerHTML = '<li>No tenants yet. Add one in D1 -- see legacy/README.md.</li>';
-          return;
-        }
-        $('pickerList').innerHTML = tenants.map(function (t) {
-          return '<li style="margin-bottom:8px;"><a href="?tenant_id=' + t.id + '">' +
-            esc(t.fullName) + (t.unitLabel ? ' — ' + esc(t.unitLabel) : '') + '</a></li>';
-        }).join('');
-      })
-      .catch(function () {
-        $('loadingMsg').textContent = 'Could not load tenants.';
-      });
-  }
-
-  function render(data, tenantId) {
+  function render(data) {
     const t = data.tenant;
     $('greeting').textContent = 'Hi, ' + (t.fullName ? t.fullName.split(' ')[0] : 'there');
     $('unitLabel').innerHTML = fmtAddress(t.unitLabel);
@@ -92,7 +79,6 @@
     $('rentAmount').textContent = money(amount);
     $('dueDate').textContent = fmtDate(t.nextDueDate);
     $('lateNote').textContent = lateNote;
-    $('payLink').href = '../Payments/?tenant_id=' + tenantId;
 
     const payments = data.payments || [];
     // Pick by paid_at, not array order -- the API sorts by created_at

@@ -43,3 +43,18 @@ CREATE TABLE IF NOT EXISTS maintenance_requests (
 );
 
 CREATE INDEX IF NOT EXISTS idx_maintenance_tenant ON maintenance_requests(tenant_id);
+
+-- One-time email magic-link tokens. `subject` is a tenant's numeric id
+-- (as text) when subject_type='tenant', or an admin's email when
+-- subject_type='admin' (admins have no numeric id). used_at prevents a
+-- link from being redeemed twice, even before it expires.
+CREATE TABLE IF NOT EXISTS login_tokens (
+  token TEXT PRIMARY KEY NOT NULL,
+  subject_type TEXT NOT NULL CHECK (subject_type IN ('tenant', 'admin')),
+  subject TEXT NOT NULL,
+  expires_at TEXT NOT NULL,
+  used_at TEXT,
+  created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
+CREATE INDEX IF NOT EXISTS idx_login_tokens_expires ON login_tokens(expires_at);

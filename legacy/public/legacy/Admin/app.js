@@ -1,8 +1,8 @@
 /*
- * Admin view -- TEMPORARY no-auth mode (see src/index.js header). Loads
- * the full tenant list directly; there is no admin check right now, so
- * this page (and its API endpoints) are reachable by anyone with the
- * link until Google Sign-In is restored.
+ * Admin view. Requires a signed-in admin session (GET /legacy/api/me
+ * must return type: 'admin') -- anything else bounces back to sign-in.
+ * All the data endpoints this page calls (/tenants, /maintenance, and
+ * per-tenant detail) are separately gated server-side too.
  */
 (function () {
   const $ = function (id) { return document.getElementById(id); };
@@ -26,7 +26,31 @@
     });
   }
 
+  function signOut(e) {
+    if (e) e.preventDefault();
+    fetch('/legacy/api/auth/logout', { method: 'POST' })
+      .catch(function () {})
+      .then(function () { location.href = '/legacy/'; });
+  }
+
   document.addEventListener('DOMContentLoaded', function () {
+    fetch('/legacy/api/me')
+      .then(function (r) { return r.json().then(function (d) { return { ok: r.ok, status: r.status, data: d }; }); })
+      .then(function (res) {
+        if (!res.ok || res.data.type !== 'admin') {
+          location.href = '/legacy/';
+          return;
+        }
+        $('loadingMsg').hidden = true;
+        $('app').hidden = false;
+        init();
+      })
+      .catch(function () {
+        location.href = '/legacy/';
+      });
+  });
+
+  function init() {
     $('backLink').addEventListener('click', showList);
     $('tabPayments').addEventListener('click', function () { showTab('payments'); });
     $('tabMaintenance').addEventListener('click', function () { showTab('maintenance'); });
@@ -34,8 +58,9 @@
     $('navMaintenance').addEventListener('click', showMaintenanceView);
     $('maintenanceSearch').addEventListener('input', renderAllMaintenance);
     $('maintenanceStatusFilter').addEventListener('change', renderAllMaintenance);
+    $('signOutLink').addEventListener('click', signOut);
     loadTenants();
-  });
+  }
 
   function showTenantsView() {
     $('navTenants').className = 'active';
@@ -83,7 +108,7 @@
       return;
     }
     $('allMaintenanceBody').innerHTML = filtered.map(function (r) {
-      return '<tr><td>' + esc(r.full_name) + '</td><td>' + esc(r.unit_label || '\u2014') + '</td><td>' +
+      return '<tr><td>' + esc(r.full_name) + '</td><td>' + esc(r.unit_label || '—') + '</td><td>' +
         esc(r.description) + '</td><td><span class="pill ' + esc(r.status) + '">' + esc(r.status) +
         '</span></td><td>' + fmtDate(r.created_at) + '</td></tr>';
     }).join('');

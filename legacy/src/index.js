@@ -2,30 +2,35 @@
  * Legacy Property Hub -- Cloudflare Worker backend.
  *
  * ---------------------------------------------------------------------
- * TEMPORARY: Google Sign-In has been pulled out for now, at your
- * request, so there is NO authentication or authorization on any of
- * these endpoints -- anyone with a link can view any tenant's rent
- * amount, address, and payment history, and can trigger a Stripe
- * Checkout for any tenant. That's fine for early testing, but it needs
- * to be locked back down before real tenants/rent money are involved.
+ * AUTH: passwordless email magic links. A tenant or admin enters their
+ * email on the sign-in page (POST /legacy/api/auth/request); if it
+ * matches a row in `tenants` or `admins`, we email a one-time link
+ * (GET /legacy/api/auth/verify?token=...) via Resend. The response is
+ * identical whether or not the email matched, to avoid leaking which
+ * emails are registered.
  *
- * To restore it: verify a Google ID token (e.g. with the `jose` package
- * against https://www.googleapis.com/oauth2/v3/certs) on each request,
- * look the email up in the `admins` / `tenants` D1 tables (both tables
- * and their fail-closed design are unchanged from before), and scope
- * `/tenants/:id` access to the signed-in tenant's own id (or an admin).
- * A previous version of this file had that fully implemented -- check
- * git history for the original variant if you want to restore it as a
- * starting point.
+ * Each link is a random, single-use token stored in the `login_tokens`
+ * D1 table with a 15-minute expiry (see schema.sql). Visiting the link
+ * redeems the token (marks it used, so it can't be replayed), then
+ * issues a signed session cookie (HS256 JWT, `SESSION_SECRET`) good for
+ * 30 days. Every tenant/admin API route below is gated on that cookie
+ * via getSession()/resolveTenantAccess() -- an admin session can reach
+ * any tenant; a tenant session can only reach its own record (including
+ * via the `/tenants/me` shorthand the frontend uses).
+ *
+ * Requires the SESSION_SECRET secret (`wrangler secret put SESSION_SECRET`)
+ * and at least one row in `admins` for anyone to be able to sign in as
+ * an admin -- see README for the exact setup commands.
  * ---------------------------------------------------------------------
  */
 
 import Stripe from 'stripe';
+import { SignJWT, jwtVerify } from 'jose';
 
-function json(data, status = 200) {
+function json(data, status = 200, extraHeaders = {}) {
   return new Response(JSON.stringify(data), {
     status,
-    headers: { 'content-type': 'application/json' },
+    headers: { 'content-type': 'application/json', ...extraHeaders },
   });
 }
 
@@ -50,7 +55,7 @@ async function sendEmail(env, { to, subject, html, replyTo }) {
       },
       body: JSON.stringify({
         from: 'Legacy Property Hub <legacy@facilityhubs.com>',
-        to: [to],
+        to: Array.isArray(to) ? to : [to],
         subject,
         html,
         ...(replyTo ? { reply_to: replyTo } : {}),
@@ -62,6 +67,103 @@ async function sendEmail(env, { to, subject, html, replyTo }) {
   } catch (err) {
     console.error('Resend send threw:', err);
   }
+}
+
+// ---------------------------------------------------------------------
+// Auth: magic-link tokens + signed session cookies.
+// ---------------------------------------------------------------------
+
+const SESSION_COOKIE = 'legacy_session';
+const SESSION_MAX_AGE_SECONDS = 60 * 60 * 24 * 30; // 30 days
+const LOGIN_TOKEN_TTL_MS = 15 * 60 * 1000; // 15 minutes
+
+function randomToken() {
+  const bytes = new Uint8Array(32);
+  crypto.getRandomValues(bytes);
+  return Array.from(bytes, (b) => b.toString(16).padStart(2, '0')).join('');
+}
+
+function sessionSecretKey(env) {
+  if (!env.SESSION_SECRET) {
+    throw new Error('SESSION_SECRET is not configured (wrangler secret put SESSION_SECRET)');
+  }
+  return new TextEncoder().encode(env.SESSION_SECRET);
+}
+
+// `type` is 'tenant' or 'admin'; `subject` is the tenant id (string) or
+// the admin's email.
+async function createSessionToken(env, { type, subject }) {
+  const key = sessionSecretKey(env);
+  return new SignJWT({ type, subject })
+    .setProtectedHeader({ alg: 'HS256' })
+    .setIssuedAt()
+    .setExpirationTime(`${SESSION_MAX_AGE_SECONDS}s`)
+    .sign(key);
+}
+
+function sessionCookieHeader(token) {
+  return `${SESSION_COOKIE}=${token}; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=${SESSION_MAX_AGE_SECONDS}`;
+}
+
+function clearSessionCookieHeader() {
+  return `${SESSION_COOKIE}=; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=0`;
+}
+
+function readCookie(request, name) {
+  const header = request.headers.get('Cookie');
+  if (!header) return null;
+  for (const part of header.split(';')) {
+    const idx = part.indexOf('=');
+    if (idx === -1) continue;
+    const key = part.slice(0, idx).trim();
+    if (key === name) return decodeURIComponent(part.slice(idx + 1).trim());
+  }
+  return null;
+}
+
+// Returns { type: 'tenant'|'admin', subject } from a valid session
+// cookie, or null if there isn't one / it's invalid / expired.
+async function getSession(request, env) {
+  const token = readCookie(request, SESSION_COOKIE);
+  if (!token) return null;
+  try {
+    const key = sessionSecretKey(env);
+    const { payload } = await jwtVerify(token, key);
+    if (!payload || !payload.type || payload.subject == null) return null;
+    return { type: payload.type, subject: payload.subject };
+  } catch (err) {
+    return null;
+  }
+}
+
+function canAccessTenant(session, tenantId) {
+  if (!session) return false;
+  if (session.type === 'admin') return true;
+  return session.type === 'tenant' && String(session.subject) === String(tenantId);
+}
+
+// Resolves the `:id` path segment (a numeric tenant id, or the literal
+// "me") against the caller's session. Returns { session, tenantId } on
+// success, or { error: <Response> } if the caller isn't allowed in.
+async function resolveTenantAccess(request, env, idParam) {
+  const session = await getSession(request, env);
+  if (!session) return { error: json({ error: 'Not signed in' }, 401) };
+
+  if (idParam === 'me') {
+    if (session.type !== 'tenant') {
+      return { error: json({ error: 'Sign in as a tenant to use /me' }, 403) };
+    }
+    return { session, tenantId: String(session.subject) };
+  }
+
+  if (!canAccessTenant(session, idParam)) {
+    return { error: json({ error: 'Forbidden' }, 403) };
+  }
+  return { session, tenantId: idParam };
+}
+
+function requireAdmin(session) {
+  return !!session && session.type === 'admin';
 }
 
 // All due-day / late-fee day-of-month math is done in the property's
@@ -172,10 +274,107 @@ function tenantSummary(tenant, late) {
   };
 }
 
+// GET /legacy/api/auth/verify?token=... -- NOT routed through handleApi,
+// since it needs to issue a raw redirect + Set-Cookie rather than JSON.
+async function handleAuthVerify(request, env, url) {
+  const token = url.searchParams.get('token');
+  if (!token) {
+    return Response.redirect(`${url.origin}/legacy/?error=invalid_link`, 302);
+  }
+
+  const row = await env.DB.prepare('SELECT * FROM login_tokens WHERE token = ?').bind(token).first();
+  if (!row || row.used_at || new Date(`${row.expires_at}Z`).getTime() < Date.now()) {
+    return Response.redirect(`${url.origin}/legacy/?error=expired_link`, 302);
+  }
+
+  await env.DB.prepare(`UPDATE login_tokens SET used_at = datetime('now') WHERE token = ?`).bind(token).run();
+
+  const sessionToken = await createSessionToken(env, { type: row.subject_type, subject: row.subject });
+  const dest = row.subject_type === 'admin' ? '/legacy/Admin/' : '/legacy/Dashboard/';
+
+  return new Response(null, {
+    status: 302,
+    headers: {
+      Location: `${url.origin}${dest}`,
+      'Set-Cookie': sessionCookieHeader(sessionToken),
+    },
+  });
+}
+
 async function handleApi(request, env, url) {
   const path = url.pathname.replace(/^\/legacy\/api/, '') || '/';
 
+  // ---- Auth ----
+
+  if (path === '/auth/request' && request.method === 'POST') {
+    const body = await request.json().catch(() => ({}));
+    const email = body.email ? String(body.email).trim().toLowerCase() : '';
+
+    // Always the same response whether or not the email matched, so
+    // this endpoint can't be used to enumerate tenant/admin emails.
+    if (email) {
+      const tenant = await env.DB.prepare(
+        'SELECT id FROM tenants WHERE lower(email) = ? AND active = 1'
+      ).bind(email).first();
+      let subjectType = null;
+      let subject = null;
+      let sendTo = null;
+      if (tenant) {
+        subjectType = 'tenant';
+        subject = String(tenant.id);
+        sendTo = email;
+      } else {
+        const admin = await env.DB.prepare('SELECT email FROM admins WHERE lower(email) = ?').bind(email).first();
+        if (admin) {
+          subjectType = 'admin';
+          subject = admin.email;
+          sendTo = email;
+        }
+      }
+
+      if (subjectType) {
+        const token = randomToken();
+        const expiresAt = new Date(Date.now() + LOGIN_TOKEN_TTL_MS).toISOString().slice(0, 19);
+        await env.DB.prepare(
+          `INSERT INTO login_tokens (token, subject_type, subject, expires_at) VALUES (?, ?, ?, ?)`
+        ).bind(token, subjectType, subject, expiresAt).run();
+
+        const link = `${url.origin}/legacy/api/auth/verify?token=${token}`;
+        await sendEmail(env, {
+          to: sendTo,
+          subject: 'Sign in to Legacy Property Hub',
+          html: `<p>Click below to sign in to Legacy Property Hub. This link expires in 15 minutes and can only be used once.</p>
+<p><a href="${link}">Sign in to Legacy Property Hub</a></p>
+<p>If you didn't request this, you can safely ignore this email.</p>`,
+        });
+      }
+    }
+
+    return json({ ok: true, message: "If that email is on file, we've sent a sign-in link." });
+  }
+
+  if (path === '/auth/logout' && request.method === 'POST') {
+    return json({ ok: true }, 200, { 'Set-Cookie': clearSessionCookieHeader() });
+  }
+
+  if (path === '/me' && request.method === 'GET') {
+    const session = await getSession(request, env);
+    if (!session) return json({ error: 'Not signed in' }, 401);
+    if (session.type === 'admin') {
+      return json({ type: 'admin', email: session.subject });
+    }
+    const tenant = await loadTenant(env, session.subject);
+    if (!tenant) return json({ error: 'Tenant not found' }, 404);
+    const late = await lateFeeInfo(env, tenant);
+    return json({ type: 'tenant', tenant: tenantSummary(tenant, late) });
+  }
+
+  // ---- Admin-only ----
+
   if (path === '/tenants' && request.method === 'GET') {
+    const session = await getSession(request, env);
+    if (!requireAdmin(session)) return json({ error: 'Forbidden' }, 403);
+
     const tenants = await env.DB.prepare(
       `SELECT t.*,
               (SELECT MAX(paid_at) FROM payments p WHERE p.tenant_id = t.id AND p.status = 'succeeded') AS last_paid_at
@@ -191,6 +390,9 @@ async function handleApi(request, env, url) {
 
   // All maintenance requests across every tenant, for the Admin view.
   if (path === '/maintenance' && request.method === 'GET') {
+    const session = await getSession(request, env);
+    if (!requireAdmin(session)) return json({ error: 'Forbidden' }, 403);
+
     const requests = await env.DB.prepare(
       `SELECT m.id, m.description, m.status, m.created_at, m.updated_at,
               t.id AS tenant_id, t.full_name, t.unit_label
@@ -202,6 +404,9 @@ async function handleApi(request, env, url) {
   }
 
   if (path === '/tenants' && request.method === 'POST') {
+    const session = await getSession(request, env);
+    if (!requireAdmin(session)) return json({ error: 'Forbidden' }, 403);
+
     const body = await request.json().catch(() => ({}));
     const { email, fullName, unitLabel, rentAmountCents, dueDay, lateFeeCents, lateFeeAfterDay } = body;
     if (!email || !fullName || !rentAmountCents || !dueDay) {
@@ -217,9 +422,13 @@ async function handleApi(request, env, url) {
     return json({ ok: true });
   }
 
-  const tenantMatch = path.match(/^\/tenants\/(\d+)$/);
+  // ---- Tenant-scoped (own tenant, or admin) ----
+
+  const tenantMatch = path.match(/^\/tenants\/(\d+|me)$/);
   if (tenantMatch && request.method === 'GET') {
-    const tenant = await loadTenant(env, tenantMatch[1]);
+    const access = await resolveTenantAccess(request, env, tenantMatch[1]);
+    if (access.error) return access.error;
+    const tenant = await loadTenant(env, access.tenantId);
     if (!tenant) return json({ error: 'not found' }, 404);
     const late = await lateFeeInfo(env, tenant);
     const payments = await env.DB.prepare(
@@ -229,26 +438,32 @@ async function handleApi(request, env, url) {
     return json({ tenant: tenantSummary(tenant, late), payments: payments.results });
   }
 
-  const paymentsMatch = path.match(/^\/tenants\/(\d+)\/payments$/);
+  const paymentsMatch = path.match(/^\/tenants\/(\d+|me)\/payments$/);
   if (paymentsMatch && request.method === 'GET') {
+    const access = await resolveTenantAccess(request, env, paymentsMatch[1]);
+    if (access.error) return access.error;
     const payments = await env.DB.prepare(
       `SELECT id, amount_cents, status, period_label, method, created_at, paid_at
        FROM payments WHERE tenant_id = ? ORDER BY created_at DESC`
-    ).bind(paymentsMatch[1]).all();
+    ).bind(access.tenantId).all();
     return json({ payments: payments.results });
   }
 
-  const maintenanceMatch = path.match(/^\/tenants\/(\d+)\/maintenance$/);
+  const maintenanceMatch = path.match(/^\/tenants\/(\d+|me)\/maintenance$/);
   if (maintenanceMatch && request.method === 'GET') {
+    const access = await resolveTenantAccess(request, env, maintenanceMatch[1]);
+    if (access.error) return access.error;
     const requests = await env.DB.prepare(
       `SELECT id, description, status, created_at, updated_at
        FROM maintenance_requests WHERE tenant_id = ? ORDER BY created_at DESC`
-    ).bind(maintenanceMatch[1]).all();
+    ).bind(access.tenantId).all();
     return json({ requests: requests.results });
   }
 
   if (maintenanceMatch && request.method === 'POST') {
-    const tenant = await loadTenant(env, maintenanceMatch[1]);
+    const access = await resolveTenantAccess(request, env, maintenanceMatch[1]);
+    if (access.error) return access.error;
+    const tenant = await loadTenant(env, access.tenantId);
     if (!tenant) return json({ error: 'not found' }, 404);
     const body = await request.json().catch(() => ({}));
     const description = body.description ? String(body.description).trim() : '';
@@ -260,7 +475,7 @@ async function handleApi(request, env, url) {
     ).bind(tenant.id, description).run();
 
     await sendEmail(env, {
-      to: 'thenonamejames@gmail.com',
+      to: 'legacy@facilityhubs.com',
       subject: `Maintenance request - ${tenant.unit_label || tenant.full_name}`,
       replyTo: tenant.email,
       html: `<p><strong>Tenant:</strong> ${escapeHtml(tenant.full_name)}${tenant.unit_label ? ` (${escapeHtml(tenant.unit_label)})` : ''}</p>
@@ -272,9 +487,11 @@ async function handleApi(request, env, url) {
     return json({ ok: true });
   }
 
-  const payMatch = path.match(/^\/tenants\/(\d+)\/pay$/);
+  const payMatch = path.match(/^\/tenants\/(\d+|me)\/pay$/);
   if (payMatch && request.method === 'POST') {
-    const tenant = await loadTenant(env, payMatch[1]);
+    const access = await resolveTenantAccess(request, env, payMatch[1]);
+    if (access.error) return access.error;
+    const tenant = await loadTenant(env, access.tenantId);
     if (!tenant) return json({ error: 'not found' }, 404);
     if (!env.STRIPE_SECRET_KEY) {
       return json({ error: 'Payments are not configured yet. Set STRIPE_SECRET_KEY.' }, 503);
@@ -297,8 +514,8 @@ async function handleApi(request, env, url) {
         },
         quantity: 1,
       }],
-      success_url: `${url.origin}/legacy/Payments/?tenant_id=${tenant.id}&paid=1`,
-      cancel_url: `${url.origin}/legacy/Payments/?tenant_id=${tenant.id}&canceled=1`,
+      success_url: `${url.origin}/legacy/Payments/?paid=1`,
+      cancel_url: `${url.origin}/legacy/Payments/?canceled=1`,
       customer_email: tenant.email,
       metadata: { tenant_id: String(tenant.id) },
     });
@@ -315,8 +532,8 @@ async function handleApi(request, env, url) {
 }
 
 // Stripe webhook -- authenticated by verifying the Stripe-Signature header
-// against STRIPE_WEBHOOK_SECRET (unrelated to the Google auth removed
-// above; this is Stripe calling us, not a signed-in user).
+// against STRIPE_WEBHOOK_SECRET (unrelated to session auth above; this is
+// Stripe calling us, not a signed-in user).
 async function handleStripeWebhook(request, env) {
   if (!env.STRIPE_SECRET_KEY || !env.STRIPE_WEBHOOK_SECRET) {
     return json({ error: 'Stripe is not configured yet.' }, 503);
@@ -375,6 +592,9 @@ export default {
 
     if (url.pathname === '/legacy/api/stripe/webhook' && request.method === 'POST') {
       return handleStripeWebhook(request, env);
+    }
+    if (url.pathname === '/legacy/api/auth/verify' && request.method === 'GET') {
+      return handleAuthVerify(request, env, url);
     }
     if (url.pathname.startsWith('/legacy/api/')) {
       return handleApi(request, env, url);
