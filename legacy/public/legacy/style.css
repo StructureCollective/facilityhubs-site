@@ -24,20 +24,22 @@ body { margin: 0; background: var(--bg); font: 15px/1.5 var(--font-body); color:
 h1, h2 { font-family: var(--font-head); font-weight: 700; margin: 0; }
 
 .topbar {
-  height: 166px;
+  /* Height comes purely from the logo + this padding, on purpose --
+     that way it can never drift out of sync the way a hardcoded
+     height number can. Shrink the padding below to shrink the bar. */
   background: #fff;
   border-bottom: 1px solid var(--line);
   display: flex;
   align-items: center;
   gap: 12px;
-  padding: 0 28px;
+  padding: 1px 28px;
   position: sticky;
   top: 0;
   z-index: 10;
 }
 .topbar img { height: 160px; display: block; }
 
-.shell { display: grid; grid-template-columns: 230px 1fr; min-height: calc(100vh - 166px); }
+.shell { display: grid; grid-template-columns: 230px 1fr; min-height: calc(100vh - 163px); }
 
 aside { background: var(--navy); padding: 28px 16px; }
 .greeting { padding: 0 10px 20px; margin-bottom: 12px; border-bottom: 1px solid rgba(255,255,255,.16); }
