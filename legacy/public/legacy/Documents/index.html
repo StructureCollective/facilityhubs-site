@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Legacy Property Hub | Payments</title>
+<title>Legacy Property Hub | Documents</title>
 <link rel="icon" type="image/png" href="/assets/facility-hubs-favicon.png">
 <meta name="theme-color" content="#0d2b5c">
 <link rel="stylesheet" href="../style.css">
@@ -24,41 +24,22 @@
 <nav>
 <a href="../Dashboard/">Dashboard</a>
 <a href="../Maintenance/">Maintenance Requests</a>
-<a class="active" aria-current="page">Payments</a>
-<a href="../Documents/">Documents</a>
+<a href="../Payments/">Payments</a>
+<a class="active" aria-current="page">Documents</a>
 <div class="divider"></div>
 <a href="/legacy/">Sign Out</a>
 </nav>
 </aside>
 <main>
 <header class="page-header">
-<h1>Payments</h1>
+<h1>Documents</h1>
+<p>Your lease, notices, and other files your property manager shares will show up here.</p>
 </header>
 
 <div id="apiNotice" class="notice error" hidden></div>
-<div id="statusNotice" class="notice good" hidden></div>
-
-<section class="cards">
-<div class="card">
-<div class="label">Amount due</div>
-<div class="value" id="rentAmount">&mdash;</div>
-<div class="sub" id="dueSub"></div>
-</div>
-<div class="card">
-<div class="label">Pay now</div>
-<div style="margin-top:10px;">
-<button class="btn gold" id="payBtn">Pay rent</button>
-</div>
-<div class="sub" id="payStatus"></div>
-</div>
-</section>
 
 <section>
-<h2 style="margin-bottom:12px;">Payment history</h2>
-<table>
-<thead><tr><th>Period</th><th>Amount</th><th>Status</th><th>Date</th></tr></thead>
-<tbody id="historyBody"><tr><td colspan="4">Loading&hellip;</td></tr></tbody>
-</table>
+<div class="notice warn">No documents have been shared yet. Check back soon, or reach out to your property manager.</div>
 </section>
 </main>
 </div>

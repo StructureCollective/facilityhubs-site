@@ -48,10 +48,10 @@
       return;
     }
     $('tenantBody').innerHTML = tenants.map(function (t) {
-      return '<tr class="row-click" data-id="' + t.id + '" data-name="' + esc(t.full_name) + '" data-unit="' + esc(t.unit_label || '') + '">' +
-        '<td>' + esc(t.full_name) + '<br><span style="color:var(--muted);font-size:.8rem;">' + esc(t.email) + '</span></td>' +
-        '<td>' + esc(t.unit_label || '—') + '</td>' +
-        '<td>' + money(t.rent_amount_cents) + '</td>' +
+      return '<tr class="row-click" data-id="' + t.id + '" data-name="' + esc(t.fullName) + '" data-unit="' + esc(t.unitLabel || '') + '">' +
+        '<td>' + esc(t.fullName) + '<br><span style="color:var(--muted);font-size:.8rem;">' + esc(t.email) + '</span></td>' +
+        '<td>' + esc(t.unitLabel || '—') + '</td>' +
+        '<td>' + money(t.rentAmountCents) + '</td>' +
         '<td>' + fmtDate(t.nextDueDate) + '</td>' +
         '<td>' + fmtDate(t.last_paid_at) + '</td></tr>';
     }).join('');

@@ -23,6 +23,13 @@
     });
   }
 
+  function fmtAddress(label) {
+    if (!label) return '';
+    var idx = label.indexOf(',');
+    if (idx === -1) return esc(label);
+    return esc(label.slice(0, idx).trim()) + '<br>' + esc(label.slice(idx + 1).trim());
+  }
+
   document.addEventListener('DOMContentLoaded', function () {
     const tenantId = new URLSearchParams(location.search).get('tenant_id');
     if (!tenantId) {
@@ -63,7 +70,7 @@
         }
         $('pickerList').innerHTML = tenants.map(function (t) {
           return '<li style="margin-bottom:8px;"><a href="?tenant_id=' + t.id + '">' +
-            esc(t.full_name) + (t.unit_label ? ' — ' + esc(t.unit_label) : '') + '</a></li>';
+            esc(t.fullName) + (t.unitLabel ? ' — ' + esc(t.unitLabel) : '') + '</a></li>';
         }).join('');
       })
       .catch(function () {
@@ -74,7 +81,7 @@
   function render(data, tenantId) {
     const t = data.tenant;
     $('greeting').textContent = 'Hi, ' + (t.fullName ? t.fullName.split(' ')[0] : 'there');
-    $('unitLabel').textContent = t.unitLabel || '';
+    $('unitLabel').innerHTML = fmtAddress(t.unitLabel);
 
     let amount = t.rentAmountCents;
     let lateNote = '';

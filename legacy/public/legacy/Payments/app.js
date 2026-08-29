@@ -22,6 +22,13 @@
     });
   }
 
+  function fmtAddress(label) {
+    if (!label) return '';
+    var idx = label.indexOf(',');
+    if (idx === -1) return esc(label);
+    return esc(label.slice(0, idx).trim()) + '<br>' + esc(label.slice(idx + 1).trim());
+  }
+
   document.addEventListener('DOMContentLoaded', function () {
     const tenantId = new URLSearchParams(location.search).get('tenant_id');
     if (!tenantId) {
@@ -65,7 +72,7 @@
   function render(data) {
     const t = data.tenant;
     $('greeting').textContent = 'Hi, ' + (t.fullName ? t.fullName.split(' ')[0] : 'there');
-    $('unitLabel').textContent = t.unitLabel || '';
+    $('unitLabel').innerHTML = fmtAddress(t.unitLabel);
 
     let amount = t.rentAmountCents;
     if (t.lateFeeApplies) amount += t.lateFeeCents;

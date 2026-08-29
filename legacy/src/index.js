@@ -29,17 +29,37 @@ function json(data, status = 200) {
   });
 }
 
-// Next occurrence of `dueDay` (1-28) on/after `fromDate`, as YYYY-MM-DD.
+// All due-day / late-fee day-of-month math is done in the property's
+// local time (US Eastern), not UTC -- a tenant whose rent is due "on
+// the 7th" should roll over to the next period at midnight Eastern,
+// not midnight UTC (which is 7-8pm Eastern the evening before).
+const PROPERTY_TIME_ZONE = 'America/New_York';
+
+// { year, month (1-12), day } for `date`, as observed in PROPERTY_TIME_ZONE.
+function easternParts(date = new Date()) {
+  const parts = new Intl.DateTimeFormat('en-US', {
+    timeZone: PROPERTY_TIME_ZONE, year: 'numeric', month: '2-digit', day: '2-digit',
+  }).formatToParts(date);
+  const get = (type) => Number(parts.find((p) => p.type === type).value);
+  return { year: get('year'), month: get('month'), day: get('day') };
+}
+
+// Next occurrence of `dueDay` (1-28) on/after `fromDate`, as YYYY-MM-DD,
+// reckoned in Eastern time.
 function nextDueDate(dueDay, fromDate = new Date()) {
-  const d = new Date(Date.UTC(fromDate.getUTCFullYear(), fromDate.getUTCMonth(), dueDay));
-  if (d.getTime() < Date.UTC(fromDate.getUTCFullYear(), fromDate.getUTCMonth(), fromDate.getUTCDate())) {
-    d.setUTCMonth(d.getUTCMonth() + 1);
+  const { year, month, day } = easternParts(fromDate);
+  let y = year;
+  let m = month - 1; // 0-indexed for Date.UTC
+  if (day > dueDay) {
+    m += 1;
+    if (m > 11) { m = 0; y += 1; }
   }
-  return d.toISOString().slice(0, 10);
+  return new Date(Date.UTC(y, m, dueDay)).toISOString().slice(0, 10);
 }
 
 function currentPeriodLabel(fromDate = new Date()) {
-  return fromDate.toISOString().slice(0, 7); // 'YYYY-MM'
+  const { year, month } = easternParts(fromDate);
+  return `${year}-${String(month).padStart(2, '0')}`; // 'YYYY-MM'
 }
 
 function periodLabel(dueDay) {
@@ -63,7 +83,7 @@ async function lateFeeInfo(env, tenant) {
   if (!tenant.late_fee_after_day) {
     return { lateFeeCents: tenant.late_fee_cents || 0, lateFeeAfterDay: null, lateFeeApplies: false };
   }
-  const todayDay = new Date().getUTCDate();
+  const todayDay = easternParts().day;
   const paid = await hasPaidCurrentPeriod(env, tenant.id);
   const applies = !paid && todayDay > tenant.late_fee_after_day;
   return {
