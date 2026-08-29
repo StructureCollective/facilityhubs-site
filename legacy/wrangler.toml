@@ -22,5 +22,13 @@ database_id = "e9fba21e-6e1f-4c5c-a8cb-29d760252d3d"
 pattern = "facilityhubs.com/legacy*"
 zone_name = "facilityhubs.com"
 
-# Real secrets (STRIPE_SECRET_KEY, STRIPE_WEBHOOK_SECRET) are set with
-# `wrangler secret put`, never written here.
+# Fires the Worker's `scheduled` handler every 2 minutes to sweep out
+# abandoned "pending" payment rows (see cleanupStalePendingPayments in
+# src/index.js) -- e.g. a tenant opens the payment form and closes the
+# tab without submitting.
+[triggers]
+crons = ["*/2 * * * *"]
+
+# Real secrets (STRIPE_SECRET_KEY, STRIPE_PUBLISHABLE_KEY,
+# STRIPE_WEBHOOK_SECRET) are set with `wrangler secret put`, never
+# written here.

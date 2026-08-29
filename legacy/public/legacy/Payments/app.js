@@ -239,16 +239,19 @@
       return (p.period_label || '').toLowerCase().indexOf(q) !== -1;
     });
     if (!filtered.length) {
-      $('historyBody').innerHTML = '<tr><td colspan="4">' +
+      $('historyBody').innerHTML = '<tr><td colspan="5">' +
         (allPayments.length ? 'No payments match your search.' : 'No payments yet.') + '</td></tr>';
       return;
     }
     $('historyBody').innerHTML = filtered.map(function (p) {
       var directTag = p.method && p.method !== 'stripe'
         ? ' <span class="pill" style="background:var(--bg);color:var(--muted);">paid direct</span>' : '';
+      var receiptCell = p.receipt_url
+        ? '<a href="' + esc(p.receipt_url) + '" target="_blank" rel="noopener">View / download</a>'
+        : '\u2014';
       return '<tr><td>' + esc(p.period_label || '') + '</td><td>' + money(p.amount_cents) +
         '</td><td><span class="pill ' + esc(p.status) + '">' + esc(p.status) + '</span>' + directTag + '</td><td>' +
-        fmtDate(p.paid_at || p.created_at) + '</td></tr>';
+        fmtDate(p.paid_at || p.created_at) + '</td><td>' + receiptCell + '</td></tr>';
     }).join('');
   }
 })();

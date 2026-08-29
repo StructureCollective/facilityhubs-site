@@ -70,6 +70,45 @@ async function sendEmail(env, { to, subject, html, replyTo }) {
 }
 
 // ---------------------------------------------------------------------
+// Shared HTML email styling -- a branded shell (logo header + a
+// signature footer with the logo again) and a pill-style button, both
+// matching the app's own navy/gold look. Every outgoing email's body
+// gets wrapped in emailShell(); emailButton() builds the CTA link for
+// ones that need it (currently just the sign-in link and, when there's
+// a receipt, the payment confirmation).
+// ---------------------------------------------------------------------
+
+// Icon-only mark (transparent background, navy building + gold accents)
+// for the header -- a wide navy/gold text lockup wouldn't read well at
+// header size, and its navy pixels would nearly vanish on a navy bar
+// (which is why the header below is white, not navy, with a gold
+// accent border instead). The full logo (icon + "LEGACY PROPERTY HUB"
+// wordmark) is used for the signature at the bottom instead.
+const EMAIL_ICON_URL = 'https://facilityhubs.com/assets/legacy-icon.png';
+const EMAIL_LOGO_URL = 'https://facilityhubs.com/assets/legacy-logo.png';
+
+function emailShell(bodyHtml) {
+  return `<div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,sans-serif;max-width:480px;margin:0 auto;">
+<div style="background:#ffffff;padding:20px 24px;text-align:center;border:1px solid #d7dbe3;border-bottom:3px solid #d4a62a;border-radius:14px 14px 0 0;">
+<img src="${EMAIL_ICON_URL}" alt="Legacy Property Hub" style="height:60px;display:block;margin:0 auto;">
+</div>
+<div style="background:#ffffff;padding:28px 26px;border:1px solid #d7dbe3;border-top:none;border-radius:0 0 14px 14px;color:#12192b;font-size:15px;line-height:1.6;">
+${bodyHtml}
+<div style="margin-top:28px;padding-top:20px;border-top:1px solid #d7dbe3;text-align:center;">
+<img src="${EMAIL_LOGO_URL}" alt="Legacy Property Hub" style="height:38px;display:block;margin:0 auto 10px;">
+<div style="color:#5b6478;font-size:12px;font-style:italic;">Property with Purpose. Value for Generations.</div>
+</div>
+</div>
+</div>`;
+}
+
+function emailButton(url, label) {
+  return `<div style="text-align:center;margin:22px 0;">
+<a href="${url}" style="display:inline-block;background:#0d2b5c;color:#ffffff;text-decoration:none;font-weight:700;padding:13px 26px;border-radius:999px;font-size:15px;">${label}</a>
+</div>`;
+}
+
+// ---------------------------------------------------------------------
 // Auth: magic-link tokens + signed session cookies.
 // ---------------------------------------------------------------------
 
@@ -343,9 +382,9 @@ async function handleApi(request, env, url) {
         await sendEmail(env, {
           to: sendTo,
           subject: 'Sign in to Legacy Property Hub',
-          html: `<p>Click below to sign in to Legacy Property Hub. This link expires in 15 minutes and can only be used once.</p>
-<p><a href="${link}">Sign in to Legacy Property Hub</a></p>
-<p>If you didn't request this, you can safely ignore this email.</p>`,
+          html: emailShell(`<p>Click below to sign in to Legacy Property Hub. This link expires in 15 minutes and can only be used once.</p>
+${emailButton(link, 'Sign in to Legacy Property Hub')}
+<p style="color:#5b6478;font-size:13px;">If you didn't request this, you can safely ignore this email.</p>`),
         });
       }
     }
@@ -432,7 +471,7 @@ async function handleApi(request, env, url) {
     if (!tenant) return json({ error: 'not found' }, 404);
     const late = await lateFeeInfo(env, tenant);
     const payments = await env.DB.prepare(
-      `SELECT id, amount_cents, status, period_label, method, created_at, paid_at
+      `SELECT id, amount_cents, status, period_label, method, receipt_url, created_at, paid_at
        FROM payments WHERE tenant_id = ? ORDER BY created_at DESC`
     ).bind(tenant.id).all();
     return json({ tenant: tenantSummary(tenant, late), payments: payments.results });
@@ -443,7 +482,7 @@ async function handleApi(request, env, url) {
     const access = await resolveTenantAccess(request, env, paymentsMatch[1]);
     if (access.error) return access.error;
     const payments = await env.DB.prepare(
-      `SELECT id, amount_cents, status, period_label, method, created_at, paid_at
+      `SELECT id, amount_cents, status, period_label, method, receipt_url, created_at, paid_at
        FROM payments WHERE tenant_id = ? ORDER BY created_at DESC`
     ).bind(access.tenantId).all();
     return json({ payments: payments.results });
@@ -484,12 +523,12 @@ async function handleApi(request, env, url) {
       to: 'legacy@facilityhubs.com',
       subject: `Maintenance request - ${tenant.unit_label || tenant.full_name}`,
       replyTo: tenant.email,
-      html: `<p><strong>Tenant:</strong> ${escapeHtml(tenant.full_name)}${tenant.unit_label ? ` (${escapeHtml(tenant.unit_label)})` : ''}</p>
+      html: emailShell(`<p><strong>Tenant:</strong> ${escapeHtml(tenant.full_name)}${tenant.unit_label ? ` (${escapeHtml(tenant.unit_label)})` : ''}</p>
 <p><strong>Email:</strong> ${escapeHtml(tenant.email)}</p>
 <p><strong>Type:</strong> ${escapeHtml(issueType)}</p>
 ${issueStartedOn ? `<p><strong>Issue started:</strong> ${escapeHtml(issueStartedOn)}</p>` : ''}
 <p><strong>Request:</strong></p>
-<p>${escapeHtml(description)}</p>`,
+<p>${escapeHtml(description)}</p>`),
     });
 
     return json({ ok: true });
@@ -518,7 +557,11 @@ ${issueStartedOn ? `<p><strong>Issue started:</strong> ${escapeHtml(issueStarted
       amount: amountCents,
       currency: 'usd',
       automatic_payment_methods: { enabled: true },
-      receipt_email: tenant.email,
+      // No receipt_email here on purpose -- setting it makes Stripe send
+      // its own separate automatic receipt in live mode, regardless of
+      // any Dashboard email setting. We only want the one branded email
+      // this app sends (which already links to Stripe's hosted receipt
+      // page via receipt_url once the payment succeeds).
       description: `Rent - ${tenant.unit_label || tenant.full_name}` + (late.lateFeeApplies ? ' (includes late fee)' : ''),
       metadata: { tenant_id: String(tenant.id), period_label: periodLabel },
     });
@@ -539,6 +582,23 @@ ${issueStartedOn ? `<p><strong>Issue started:</strong> ${escapeHtml(issueStarted
   }
 
   return json({ error: 'not found' }, 404);
+}
+
+// Looks up the Stripe-hosted receipt page (a printable/downloadable PDF
+// view, via Stripe's own "Download" button on that page) for a charge.
+// `chargeId` is a PaymentIntent's `latest_charge` -- a plain string ID
+// on Stripe API versions from late 2022 on (this app pins stripe@^17,
+// which defaults to a current API version), not an expanded object.
+async function fetchReceiptUrl(env, chargeId) {
+  if (!chargeId || !env.STRIPE_SECRET_KEY) return null;
+  try {
+    const stripe = new Stripe(env.STRIPE_SECRET_KEY, { httpClient: Stripe.createFetchHttpClient() });
+    const charge = await stripe.charges.retrieve(chargeId);
+    return charge.receipt_url || null;
+  } catch (err) {
+    console.error('fetchReceiptUrl: could not retrieve charge', chargeId, err);
+    return null;
+  }
 }
 
 // Stripe webhook -- authenticated by verifying the Stripe-Signature header
@@ -564,12 +624,17 @@ async function handleStripeWebhook(request, env) {
 
   if (event.type === 'payment_intent.succeeded') {
     const pi = event.data.object;
+
+    // Stripe's hosted, downloadable PDF receipt for this charge -- not
+    // present on the PaymentIntent itself, only on its Charge.
+    const receiptUrl = await fetchReceiptUrl(env, pi.latest_charge);
+
     await env.DB.prepare(
-      `UPDATE payments SET status = 'succeeded', paid_at = datetime('now') WHERE stripe_payment_intent_id = ?`
-    ).bind(pi.id).run();
+      `UPDATE payments SET status = 'succeeded', paid_at = datetime('now'), receipt_url = ? WHERE stripe_payment_intent_id = ?`
+    ).bind(receiptUrl, pi.id).run();
 
     const paid = await env.DB.prepare(
-      `SELECT p.amount_cents, p.period_label, t.email, t.full_name, t.unit_label
+      `SELECT p.amount_cents, p.period_label, p.receipt_url, t.email, t.full_name, t.unit_label
        FROM payments p JOIN tenants t ON t.id = p.tenant_id
        WHERE p.stripe_payment_intent_id = ?`
     ).bind(pi.id).first();
@@ -578,11 +643,12 @@ async function handleStripeWebhook(request, env) {
       await sendEmail(env, {
         to: paid.email,
         subject: 'Payment received - Legacy Property Hub',
-        html: `<p>Hi ${escapeHtml(firstName)},</p>
+        html: emailShell(`<p>Hi ${escapeHtml(firstName)},</p>
 <p>We've received your rent payment${paid.unit_label ? ` for ${escapeHtml(paid.unit_label)}` : ''}.</p>
 <p><strong>Amount:</strong> $${(paid.amount_cents / 100).toFixed(2)}<br>
 <strong>Period:</strong> ${escapeHtml(paid.period_label || '')}</p>
-<p>Thank you,<br>Legacy Property Hub</p>`,
+${paid.receipt_url ? emailButton(paid.receipt_url, 'View / download receipt') : ''}
+<p>Thank you,<br>Legacy Property Hub</p>`),
       });
     }
   } else if (event.type === 'payment_intent.payment_failed' || event.type === 'payment_intent.canceled') {
@@ -593,6 +659,64 @@ async function handleStripeWebhook(request, env) {
   }
 
   return json({ received: true });
+}
+
+// A "pending" payments row is created the moment a tenant clicks "Pay
+// rent" (a Stripe PaymentIntent exists), before they've actually
+// submitted the embedded payment form. If they close the tab, back out,
+// or click "Pay rent" again to retry, that row is left behind forever
+// unless something cleans it up -- this is that something, run on a
+// schedule (see wrangler.toml's [triggers] crons) rather than on a
+// timer in the browser, since nothing guarantees the tab stays open.
+const PENDING_PAYMENT_TTL_MINUTES = 3;
+
+// Deliberately NOT a blind "delete anything pending older than N
+// minutes" -- ACH (bank debit) payments sit in Stripe's 'processing'
+// state for days after a tenant submits them, and the webhook that
+// marks a payment 'succeeded' can take that long to arrive too. Time
+// alone can't tell a truly abandoned attempt apart from rent that's
+// genuinely mid-transfer, so this checks each stale row's real
+// PaymentIntent status with Stripe before deciding: delete it only if
+// Stripe confirms it was never actually submitted (or was canceled);
+// leave anything still in flight alone; and reconcile the rare case
+// where Stripe shows it succeeded but our webhook hasn't landed yet,
+// instead of losing that payment.
+const ABANDONED_INTENT_STATUSES = ['requires_payment_method', 'requires_confirmation', 'canceled'];
+
+async function cleanupStalePendingPayments(env) {
+  if (!env.STRIPE_SECRET_KEY) return;
+
+  const stale = await env.DB.prepare(
+    `SELECT id, stripe_payment_intent_id FROM payments
+     WHERE status = 'pending'
+       AND stripe_payment_intent_id IS NOT NULL
+       AND datetime(created_at) < datetime('now', '-' || ? || ' minutes')`
+  ).bind(PENDING_PAYMENT_TTL_MINUTES).all();
+
+  if (!stale.results.length) return;
+
+  const stripe = new Stripe(env.STRIPE_SECRET_KEY, { httpClient: Stripe.createFetchHttpClient() });
+
+  for (const row of stale.results) {
+    let intent;
+    try {
+      intent = await stripe.paymentIntents.retrieve(row.stripe_payment_intent_id);
+    } catch (err) {
+      console.error('cleanupStalePendingPayments: could not retrieve', row.stripe_payment_intent_id, err);
+      continue;
+    }
+
+    if (intent.status === 'succeeded') {
+      const receiptUrl = await fetchReceiptUrl(env, intent.latest_charge);
+      await env.DB.prepare(
+        `UPDATE payments SET status = 'succeeded', paid_at = datetime('now'), receipt_url = ? WHERE id = ?`
+      ).bind(receiptUrl, row.id).run();
+    } else if (ABANDONED_INTENT_STATUSES.includes(intent.status)) {
+      await env.DB.prepare(`DELETE FROM payments WHERE id = ?`).bind(row.id).run();
+    }
+    // Anything else (processing, requires_action, etc.) is left as-is --
+    // still genuinely in flight.
+  }
 }
 
 export default {
@@ -611,5 +735,10 @@ export default {
 
     // Everything else under /legacy/* is a static asset (HTML/CSS/JS).
     return env.ASSETS.fetch(request);
+  },
+
+  // Fired by the Cloudflare Cron Trigger in wrangler.toml's [triggers].
+  async scheduled(event, env, ctx) {
+    ctx.waitUntil(cleanupStalePendingPayments(env));
   },
 };

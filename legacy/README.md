@@ -79,6 +79,13 @@ who has an account.
       CREATE INDEX IF NOT EXISTS idx_login_tokens_expires ON login_tokens(expires_at);"
    ```
 
+   Likewise, if your database predates `receipt_url` on `payments`
+   (Stripe's hosted receipt link, stored once a payment succeeds):
+   ```
+   npx wrangler d1 execute legacy_property_hub_db --remote --command \
+     "ALTER TABLE payments ADD COLUMN receipt_url TEXT;"
+   ```
+
 5. **Set up Stripe** (test mode to start). Payments use a custom embedded
    checkout -- Stripe Elements' Payment Element, mounted directly on the
    Payments page -- not a redirect to a Stripe-hosted Checkout page, so
@@ -97,6 +104,18 @@ who has an account.
      npx wrangler secret put STRIPE_PUBLISHABLE_KEY
      npx wrangler secret put STRIPE_WEBHOOK_SECRET
      ```
+   - Each successful payment gets Stripe's hosted receipt link (a
+     printable/downloadable PDF) saved automatically -- it shows up as
+     "View / download" in the payment history table on both the tenant
+     Payments page and Admin's tenant detail view. No setup needed
+     beyond the above; it's fetched from Stripe when the webhook fires.
+   - A "pending" payment row that's abandoned (tenant opens the payment
+     form, never finishes) is swept up automatically a few minutes
+     later by a scheduled Cron Trigger (`wrangler.toml`'s `[triggers]`)
+     -- this is deployed along with everything else by `npm run deploy`
+     in step 7, no separate Dashboard step required. It won't touch a
+     payment that's genuinely still in progress (e.g. an ACH transfer
+     that's still processing).
 
 6. **Set up email sign-in (Resend + session secret):**
    - Get your **API key** from the Resend dashboard and set it as a

@@ -27,6 +27,10 @@ CREATE TABLE IF NOT EXISTS payments (
   method TEXT NOT NULL DEFAULT 'stripe',
   stripe_checkout_session_id TEXT UNIQUE,
   stripe_payment_intent_id TEXT,
+  -- Stripe-hosted receipt page for a succeeded card/bank charge (has its
+  -- own "Download" PDF link) -- set from the webhook once payment
+  -- succeeds; NULL until then, and for 'direct' (non-Stripe) payments.
+  receipt_url TEXT,
   created_at TEXT NOT NULL DEFAULT (datetime('now')),
   paid_at TEXT
 );

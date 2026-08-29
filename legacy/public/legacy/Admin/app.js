@@ -170,26 +170,29 @@
   }
 
   function loadPayments() {
-    $('detailBody').innerHTML = '<tr><td colspan="4">Loading&hellip;</td></tr>';
+    $('detailBody').innerHTML = '<tr><td colspan="5">Loading&hellip;</td></tr>';
     fetch('/legacy/api/tenants/' + currentTenantId + '/payments')
       .then(function (r) { return r.json(); })
       .then(function (data) { renderPayments(data.payments || []); })
       .catch(function () {
-        $('detailBody').innerHTML = '<tr><td colspan="4">Could not load payment history.</td></tr>';
+        $('detailBody').innerHTML = '<tr><td colspan="5">Could not load payment history.</td></tr>';
       });
   }
 
   function renderPayments(payments) {
     if (!payments.length) {
-      $('detailBody').innerHTML = '<tr><td colspan="4">No payments yet.</td></tr>';
+      $('detailBody').innerHTML = '<tr><td colspan="5">No payments yet.</td></tr>';
       return;
     }
     $('detailBody').innerHTML = payments.map(function (p) {
       var directTag = p.method && p.method !== 'stripe'
         ? ' <span class="pill" style="background:var(--bg);color:var(--muted);">paid direct</span>' : '';
+      var receiptCell = p.receipt_url
+        ? '<a href="' + esc(p.receipt_url) + '" target="_blank" rel="noopener">View / download</a>'
+        : '\u2014';
       return '<tr><td>' + esc(p.period_label || '') + '</td><td>' + money(p.amount_cents) +
         '</td><td><span class="pill ' + esc(p.status) + '">' + esc(p.status) + '</span>' + directTag + '</td><td>' +
-        fmtDate(p.paid_at || p.created_at) + '</td></tr>';
+        fmtDate(p.paid_at || p.created_at) + '</td><td>' + receiptCell + '</td></tr>';
     }).join('');
   }
 
