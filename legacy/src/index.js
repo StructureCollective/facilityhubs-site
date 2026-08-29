@@ -132,6 +132,28 @@ ${emailButton(link, 'Sign in to Legacy Property Hub')}
 <p style="color:#5b6478;font-size:13px;">If you didn't request this, you can safely ignore this email.</p>`);
 }
 
+// Sent by an admin from a tenant's Admin detail page (the "Send
+// Onboarding Email" button -- see POST /tenants/:id/send-onboarding-email
+// below), not automatically on tenant creation, so it can be timed to
+// whenever the admin actually wants to introduce the portal.
+export function onboardingEmailBody({ tenant }) {
+  const firstName = tenant.full_name ? tenant.full_name.split(' ')[0] : 'there';
+  const portalUrl = `${SITE_ORIGIN}/legacy/`;
+  return emailShell(`<p>Hi ${escapeHtml(firstName)},</p>
+<p>Welcome to Legacy Property Hub${tenant.unit_label ? ` for ${escapeHtml(tenant.unit_label)}` : ''} -- your online portal for rent and maintenance.</p>
+<p><strong>Signing in</strong><br>
+There's no password to remember. Enter your email at the portal and we'll send you a one-time sign-in link -- click it and you're in.</p>
+<div style="background:#f6f7fa;border:1px solid #d7dbe3;border-radius:10px;padding:16px 18px;margin:18px 0;">
+<p style="margin:0 0 8px;"><strong>What you can do there:</strong></p>
+<p style="margin:0 0 6px;">&bull; Pay rent online by card or bank transfer</p>
+<p style="margin:0 0 6px;">&bull; View your payment history and download receipts anytime</p>
+<p style="margin:0;">&bull; Submit and track maintenance requests</p>
+</div>
+${emailButton(portalUrl, 'Go to Tenant Portal')}
+<p style="color:#5b6478;font-size:13px;">Sign in anytime with ${escapeHtml(tenant.email)} -- the email address your account is registered to.</p>
+<p>Welcome aboard,<br>Legacy Property Hub</p>`);
+}
+
 export function maintenanceRequestEmailBody({ tenant, issueType, issueStartedOn, description }) {
   return emailShell(`<p><strong>Tenant:</strong> ${escapeHtml(tenant.full_name)}${tenant.unit_label ? ` (${escapeHtml(tenant.unit_label)})` : ''}</p>
 <p><strong>Email:</strong> ${escapeHtml(tenant.email)}</p>
@@ -667,6 +689,35 @@ async function handleApi(request, env, url) {
       return json({ error: 'Fee not found, or it has already been charged' }, 404);
     }
     return json({ ok: true });
+  }
+
+  // Sends the branded "how the portal works" onboarding email -- the
+  // "Send Onboarding Email" button on a tenant's Admin detail page.
+  // Defaults to the tenant's email on file, but an admin can send it to
+  // a different address instead (e.g. before the tenant's account email
+  // is finalized).
+  const onboardingMatch = path.match(/^\/tenants\/(\d+)\/send-onboarding-email$/);
+  if (onboardingMatch && request.method === 'POST') {
+    const session = await getSession(request, env);
+    if (!requireAdmin(session)) return json({ error: 'Forbidden' }, 403);
+
+    const tenantId = onboardingMatch[1];
+    const tenant = await loadTenant(env, tenantId);
+    if (!tenant) return json({ error: 'Tenant not found' }, 404);
+
+    const body = await request.json().catch(() => ({}));
+    const to = String(body.email || tenant.email || '').trim().toLowerCase();
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(to)) {
+      return json({ error: 'Enter a valid email address.' }, 400);
+    }
+
+    await sendEmail(env, {
+      to,
+      subject: 'Legacy Property Hub | Onboarding',
+      html: onboardingEmailBody({ tenant }),
+    });
+
+    return json({ ok: true, sentTo: to });
   }
 
   // Lets an admin see a tenant's own portal (Dashboard/Payments/

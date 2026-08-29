@@ -65,7 +65,42 @@
     $('cancelRentBtn').addEventListener('click', closeRentEditor);
     $('addFeeBtn').addEventListener('click', addFee);
     $('viewAsBtn').addEventListener('click', viewTenantPortal);
+    $('sendOnboardingBtn').addEventListener('click', sendOnboardingEmail);
     loadTenants();
+  }
+
+  // Prompts for a recipient (pre-filled with the tenant's email on
+  // file, but editable -- e.g. to send it to a personal address before
+  // their portal account email is finalized), then sends the branded
+  // "how the portal works" email via POST /tenants/:id/send-onboarding-email.
+  function sendOnboardingEmail() {
+    var name = currentTenantData ? currentTenantData.fullName : 'this tenant';
+    var defaultEmail = currentTenantData ? currentTenantData.email : '';
+    var to = window.prompt('Send the onboarding email to ' + name + ' at:', defaultEmail || '');
+    if (to === null) return;
+    to = to.trim();
+    if (!to) return;
+
+    $('sendOnboardingBtn').disabled = true;
+
+    fetch('/legacy/api/tenants/' + currentTenantId + '/send-onboarding-email', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ email: to }),
+    })
+      .then(function (r) { return r.json().then(function (d) { return { ok: r.ok, data: d }; }); })
+      .then(function (res) {
+        $('sendOnboardingBtn').disabled = false;
+        if (!res.ok) {
+          window.alert(res.data.error || 'Could not send the onboarding email.');
+          return;
+        }
+        window.alert('Onboarding email sent to ' + res.data.sentTo + '.');
+      })
+      .catch(function () {
+        $('sendOnboardingBtn').disabled = false;
+        window.alert('Something went wrong. Please try again.');
+      });
   }
 
   // Signs the browser in as this tenant (see /tenants/:id/view-as),

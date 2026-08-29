@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// Legacy Property Hub -- send any of the 3 real outgoing emails through
+// Legacy Property Hub -- send any of the real outgoing emails through
 // Resend without going through an actual sign-in, maintenance request, or
 // Stripe payment. Imports the exact same emailShell()/emailButton()/body
 // functions and sendEmail() that src/index.js uses in production, so this
@@ -17,6 +17,7 @@
 import {
   sendEmail,
   signInEmailBody,
+  onboardingEmailBody,
   maintenanceRequestEmailBody,
   paymentReceivedEmailBody,
   paymentReceivedAdminEmailBody,
@@ -43,6 +44,10 @@ const TEMPLATES = {
   'sign-in': {
     subject: 'Sign in to Legacy Property Hub',
     html: () => signInEmailBody(mock.signInLink),
+  },
+  'onboarding': {
+    subject: 'Legacy Property Hub | Onboarding',
+    html: () => onboardingEmailBody({ tenant: mock.tenant }),
   },
   'maintenance-request': {
     subject: `Maintenance request - ${mock.tenant.unit_label || mock.tenant.full_name}`,
