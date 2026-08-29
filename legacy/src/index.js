@@ -318,6 +318,11 @@ function tenantSummary(tenant, late, extraFees = []) {
     // Once caught up, show the upcoming due date; while unpaid, show
     // what's actually due/overdue right now instead of skipping ahead.
     nextDueDate: late.paidCurrentPeriod ? nextDueDate(tenant.due_day) : currentDueDate(tenant.due_day),
+    // Drives the Admin Status pill (Current/Late) -- this was previously
+    // computed internally above but never actually included in the
+    // response, so the pill always fell back to "Late" regardless of
+    // whether the tenant had paid.
+    paidCurrentPeriod: late.paidCurrentPeriod,
     lateFeeCents: late.lateFeeCents,
     lateFeeAfterDay: late.lateFeeAfterDay,
     lateFeeApplies: late.lateFeeApplies,
@@ -574,9 +579,14 @@ ${emailButton(link, 'Sign in to Legacy Property Hub')}
     if (!tenant) return json({ error: 'not found' }, 404);
     const late = await lateFeeInfo(env, tenant);
     const extraFees = await pendingFeesFor(env, tenant.id);
+    // Most recent first -- paid_at (when a payment actually completed)
+    // takes priority over created_at (when the row was first inserted,
+    // e.g. by the pending PaymentIntent), since those can differ, and
+    // COALESCE falls back to created_at for a payment that hasn't
+    // completed yet (paid_at is still NULL).
     const payments = await env.DB.prepare(
       `SELECT id, amount_cents, status, period_label, method, receipt_url, created_at, paid_at
-       FROM payments WHERE tenant_id = ? ORDER BY created_at DESC`
+       FROM payments WHERE tenant_id = ? ORDER BY COALESCE(paid_at, created_at) DESC`
     ).bind(tenant.id).all();
     return json({ tenant: tenantSummary(tenant, late, extraFees), payments: payments.results });
   }
@@ -587,7 +597,7 @@ ${emailButton(link, 'Sign in to Legacy Property Hub')}
     if (access.error) return access.error;
     const payments = await env.DB.prepare(
       `SELECT id, amount_cents, status, period_label, method, receipt_url, created_at, paid_at
-       FROM payments WHERE tenant_id = ? ORDER BY created_at DESC`
+       FROM payments WHERE tenant_id = ? ORDER BY COALESCE(paid_at, created_at) DESC`
     ).bind(access.tenantId).all();
     return json({ payments: payments.results });
   }
