@@ -79,6 +79,14 @@ who has an account.
       CREATE INDEX IF NOT EXISTS idx_login_tokens_expires ON login_tokens(expires_at);"
    ```
 
+   Likewise, if your database predates `phone` on `tenants` (edited
+   from the "Edit Profile" section on a tenant's Admin detail page,
+   alongside their name and sign-in email):
+   ```
+   npx wrangler d1 execute legacy_property_hub_db --remote --command \
+     "ALTER TABLE tenants ADD COLUMN phone TEXT;"
+   ```
+
    Likewise, if your database predates `receipt_url` on `payments`
    (Stripe's hosted receipt link, stored once a payment succeeds -- kept
    for reference only; the app's own PDF receipt doesn't depend on it):

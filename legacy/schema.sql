@@ -6,6 +6,7 @@ CREATE TABLE IF NOT EXISTS tenants (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   email TEXT UNIQUE NOT NULL,
   full_name TEXT NOT NULL,
+  phone TEXT,
   unit_label TEXT,
   rent_amount_cents INTEGER NOT NULL,
   due_day INTEGER NOT NULL CHECK (due_day BETWEEN 1 AND 28),

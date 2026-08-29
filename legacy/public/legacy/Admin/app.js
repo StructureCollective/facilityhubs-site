@@ -66,6 +66,9 @@
     $('addFeeBtn').addEventListener('click', addFee);
     $('viewAsBtn').addEventListener('click', viewTenantPortal);
     $('sendOnboardingBtn').addEventListener('click', sendOnboardingEmail);
+    $('editProfileBtn').addEventListener('click', openProfileEditor);
+    $('saveProfileBtn').addEventListener('click', saveProfileEdit);
+    $('cancelProfileBtn').addEventListener('click', closeProfileEditor);
     loadTenants();
   }
 
@@ -216,6 +219,7 @@
     currentTenantId = id;
     currentTenantData = null;
     closeRentEditor();
+    closeProfileEditor();
     $('maintenanceList').className = '';
     document.getElementById('tenantList').style.display = 'none';
     $('tenantDetail').className = 'open';
@@ -225,6 +229,7 @@
   }
 
   function openRentEditor() {
+    closeProfileEditor();
     $('rentEditStatus').hidden = true;
     $('editRentBtn').disabled = true;
     fetch('/legacy/api/tenants/' + currentTenantId)
@@ -261,6 +266,96 @@
     $('feeAmountInput').value = '';
   }
 
+  function openProfileEditor() {
+    closeRentEditor();
+    $('profileEditStatus').hidden = true;
+    $('editProfileBtn').disabled = true;
+    fetch('/legacy/api/tenants/' + currentTenantId)
+      .then(function (r) { return r.json().then(function (d) { return { ok: r.ok, data: d }; }); })
+      .then(function (res) {
+        $('editProfileBtn').disabled = false;
+        if (!res.ok) {
+          $('profileEditStatus').textContent = 'Could not load this tenant\'s profile.';
+          $('profileEditStatus').hidden = false;
+          return;
+        }
+        currentTenantData = res.data.tenant;
+        $('profileNameInput').value = currentTenantData.fullName || '';
+        $('profileEmailInput').value = currentTenantData.email || '';
+        $('profilePhoneInput').value = currentTenantData.phone || '';
+        $('editProfileBtn').hidden = true;
+        $('profileEditForm').hidden = false;
+      })
+      .catch(function () {
+        $('editProfileBtn').disabled = false;
+        $('profileEditStatus').textContent = 'Could not load this tenant\'s profile.';
+        $('profileEditStatus').hidden = false;
+      });
+  }
+
+  function closeProfileEditor() {
+    $('profileEditForm').hidden = true;
+    $('editProfileBtn').hidden = false;
+    $('editProfileBtn').disabled = false;
+    $('profileEditStatus').hidden = true;
+  }
+
+  function saveProfileEdit() {
+    var fullName = $('profileNameInput').value.trim();
+    var email = $('profileEmailInput').value.trim().toLowerCase();
+    var phone = $('profilePhoneInput').value.trim();
+
+    if (!fullName) {
+      $('profileEditStatus').textContent = 'Enter the tenant\'s full name.';
+      $('profileEditStatus').hidden = false;
+      return;
+    }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      $('profileEditStatus').textContent = 'Enter a valid email address.';
+      $('profileEditStatus').hidden = false;
+      return;
+    }
+
+    // The sign-in email is the one field here a mistake actually locks
+    // the tenant out over -- worth a confirmation, unlike name/phone.
+    var priorEmail = currentTenantData ? currentTenantData.email : null;
+    if (priorEmail && email !== priorEmail) {
+      if (!window.confirm('This changes the email ' + (fullName || 'this tenant') + ' signs in with, from ' + priorEmail + ' to ' + email + '. Continue?')) {
+        return;
+      }
+    }
+
+    $('saveProfileBtn').disabled = true;
+    $('cancelProfileBtn').disabled = true;
+    $('profileEditStatus').hidden = true;
+
+    fetch('/legacy/api/tenants/' + currentTenantId + '/profile', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ fullName: fullName, email: email, phone: phone }),
+    })
+      .then(function (r) { return r.json().then(function (d) { return { ok: r.ok, data: d }; }); })
+      .then(function (res) {
+        $('saveProfileBtn').disabled = false;
+        $('cancelProfileBtn').disabled = false;
+        if (!res.ok) {
+          $('profileEditStatus').textContent = res.data.error || 'Could not save changes.';
+          $('profileEditStatus').hidden = false;
+          return;
+        }
+        $('detailName').textContent = fullName;
+        closeProfileEditor();
+        reloadTenantDetail();
+        loadTenants();
+      })
+      .catch(function () {
+        $('saveProfileBtn').disabled = false;
+        $('cancelProfileBtn').disabled = false;
+        $('profileEditStatus').textContent = 'Something went wrong. Please try again.';
+        $('profileEditStatus').hidden = false;
+      });
+  }
+
   function renderFeeList() {
     var fees = (currentTenantData && currentTenantData.extraFees) || [];
     if (!fees.length) {
@@ -276,11 +371,12 @@
     });
   }
 
-  // Re-fetches just the tenant (for its current extraFees) without
-  // disturbing whatever the admin has typed into the rent/late-fee
-  // fields above -- add/remove fee shouldn't blow away an in-progress
+  // Re-fetches just the tenant (its current extraFees, or an updated
+  // name/email/phone after a profile edit) without disturbing whatever
+  // the admin has typed into the rent/late-fee fields above -- add/
+  // remove fee or a profile save shouldn't blow away an in-progress
   // rent edit.
-  function reloadTenantFees() {
+  function reloadTenantDetail() {
     return fetch('/legacy/api/tenants/' + currentTenantId)
       .then(function (r) { return r.json(); })
       .then(function (data) {
@@ -338,7 +434,7 @@
         }
         $('feeLabelInput').value = '';
         $('feeAmountInput').value = '';
-        reloadTenantFees();
+        reloadTenantDetail();
       })
       .catch(function () {
         $('addFeeBtn').disabled = false;
@@ -357,7 +453,7 @@
           $('feeAddStatus').hidden = false;
           return;
         }
-        reloadTenantFees();
+        reloadTenantDetail();
       })
       .catch(function () {
         $('feeAddStatus').textContent = 'Something went wrong. Please try again.';

@@ -411,6 +411,7 @@ function tenantSummary(tenant, late, extraFees = []) {
     id: tenant.id,
     fullName: tenant.full_name,
     email: tenant.email,
+    phone: tenant.phone,
     unitLabel: tenant.unit_label,
     rentAmountCents: tenant.rent_amount_cents,
     dueDay: tenant.due_day,
@@ -601,6 +602,55 @@ async function handleApi(request, env, url) {
       String(email).toLowerCase(), fullName, unitLabel || null, rentAmountCents, dueDay,
       lateFeeCents || 0, lateFeeAfterDay || null
     ).run();
+    return json({ ok: true });
+  }
+
+  // Edits a tenant's own contact info -- full name, sign-in email, and
+  // phone number -- from the "Edit Profile" section on their Admin
+  // detail page. Sessions are keyed by tenant id (see createSessionToken
+  // below), not email, so changing the email doesn't sign the tenant
+  // out; it just changes the address they'll need to use to sign in
+  // *next* time.
+  const profileMatch = path.match(/^\/tenants\/(\d+)\/profile$/);
+  if (profileMatch && request.method === 'POST') {
+    const session = await getSession(request, env);
+    if (!requireAdmin(session)) return json({ error: 'Forbidden' }, 403);
+
+    const tenantId = profileMatch[1];
+    const tenant = await loadTenant(env, tenantId);
+    if (!tenant) return json({ error: 'Tenant not found' }, 404);
+
+    const body = await request.json().catch(() => ({}));
+    const fullName = body.fullName ? String(body.fullName).trim() : '';
+    const email = body.email ? String(body.email).trim().toLowerCase() : '';
+    const phone = body.phone != null ? String(body.phone).trim() : '';
+
+    if (!fullName || fullName.length > 120) {
+      return json({ error: 'Full name is required (120 characters or fewer).' }, 400);
+    }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      return json({ error: 'Enter a valid email address.' }, 400);
+    }
+    if (phone.length > 30) {
+      return json({ error: 'Phone number must be 30 characters or fewer.' }, 400);
+    }
+
+    try {
+      await env.DB.prepare(
+        `UPDATE tenants SET full_name = ?, email = ?, phone = ? WHERE id = ?`
+      ).bind(fullName, email, phone || null, tenantId).run();
+    } catch (err) {
+      // The UNIQUE constraint on tenants.email (schema.sql) is what
+      // throws here -- two tenants can't share a sign-in email. Caught
+      // explicitly so a duplicate address returns a normal error
+      // response instead of an unhandled exception.
+      if (/UNIQUE constraint failed/i.test(String((err && err.message) || ''))) {
+        return json({ error: 'That email is already in use by another tenant.' }, 409);
+      }
+      console.error('profile update failed', err);
+      return json({ error: 'Something went wrong saving the tenant. Please try again.' }, 500);
+    }
+
     return json({ ok: true });
   }
 

@@ -147,11 +147,25 @@
 <p id="detailUnit"></p>
 </header>
 <div class="detail-actions">
+<button class="btn" id="editProfileBtn" type="button" style="background:#fff;color:var(--navy);border:1.5px solid var(--line-strong);">Edit Profile</button>
 <button class="btn" id="editRentBtn">Edit Rent &amp; Fees</button>
 <button class="btn" id="viewAsBtn" type="button" style="background:#fff;color:var(--navy);border:1.5px solid var(--line-strong);">View Tenant Portal</button>
 <button class="btn" id="sendOnboardingBtn" type="button" style="background:#fff;color:var(--navy);border:1.5px solid var(--line-strong);">Send Onboarding Email</button>
 </div>
 <div class="rent-edit">
+<div id="profileEditForm" class="rent-edit-form" hidden>
+<div class="field-row">
+<div class="field"><label>Full name</label><input type="text" id="profileNameInput" maxlength="120"></div>
+<div class="field"><label>Sign-in email</label><input type="email" id="profileEmailInput"></div>
+<div class="field"><label>Phone number</label><input type="tel" id="profilePhoneInput" maxlength="30" placeholder="Optional"></div>
+</div>
+<p class="rent-edit-note">Changing the sign-in email changes the address this tenant needs to use next time they sign in -- it doesn't sign them out of a session already in progress.</p>
+<div id="profileEditStatus" class="notice error" hidden></div>
+<div class="rent-edit-actions">
+<button class="btn gold" id="saveProfileBtn" type="button">Save Changes</button>
+<button class="btn" id="cancelProfileBtn" type="button" style="background:#fff;color:var(--navy);border:1.5px solid var(--line-strong);">Cancel</button>
+</div>
+</div>
 <div id="rentEditForm" class="rent-edit-form" hidden>
 <div class="field-row">
 <div class="field"><label>Rent amount ($)</label><input type="number" id="rentAmountInput" step="0.01" min="0"></div>
