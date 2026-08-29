@@ -79,16 +79,22 @@ who has an account.
       CREATE INDEX IF NOT EXISTS idx_login_tokens_expires ON login_tokens(expires_at);"
    ```
 
-5. **Set up Stripe** (test mode to start):
-   - Get your test **Secret key** from the Stripe Dashboard -> Developers -> API keys.
+5. **Set up Stripe** (test mode to start). Payments use a custom embedded
+   checkout -- Stripe Elements' Payment Element, mounted directly on the
+   Payments page -- not a redirect to a Stripe-hosted Checkout page, so
+   this needs both of Stripe's standard API keys plus a webhook:
+   - Get your test **Secret key** and **Publishable key** from the
+     Stripe Dashboard -> Developers -> API keys.
    - Create a webhook endpoint at Developers -> Webhooks pointing to
      `https://facilityhubs.com/legacy/api/stripe/webhook`, subscribed to
-     `checkout.session.completed` and `checkout.session.expired`. Copy its
-     **Signing secret**.
-   - Set both as Worker secrets (never put these in wrangler.toml or
-     commit them):
+     `payment_intent.succeeded`, `payment_intent.payment_failed`, and
+     `payment_intent.canceled`. Copy its **Signing secret**.
+   - Set all three as Worker secrets (never put these in wrangler.toml or
+     commit them -- the publishable key isn't sensitive, but this keeps
+     the setup consistent and out of git either way):
      ```
      npx wrangler secret put STRIPE_SECRET_KEY
+     npx wrangler secret put STRIPE_PUBLISHABLE_KEY
      npx wrangler secret put STRIPE_WEBHOOK_SECRET
      ```
 

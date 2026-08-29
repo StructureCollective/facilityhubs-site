@@ -39,8 +39,31 @@
 <div id="apiNotice" class="notice error" hidden></div>
 
 <section>
+<div class="field-row">
+<div class="field">
+<label for="issueType">Type</label>
+<select id="issueType">
+<option value="">Select type&hellip;</option>
+<option value="Plumbing">Plumbing</option>
+<option value="Electrical">Electrical</option>
+<option value="HVAC">HVAC (heating/cooling)</option>
+<option value="Appliance">Appliance</option>
+<option value="Structural">Structural / building</option>
+<option value="Pest Control">Pest control</option>
+<option value="Locks/Security">Locks / security</option>
+<option value="Other">Other</option>
+</select>
+</div>
+<div class="field">
+<label for="issueStarted">Date issue started</label>
+<input type="date" id="issueStarted">
+</div>
+</div>
+<div class="field">
+<label for="description">Description</label>
 <textarea id="description" rows="4" placeholder="Describe the issue (e.g. 'Kitchen faucet is leaking')"></textarea>
-<div style="margin-top:10px;">
+</div>
+<div>
 <button class="btn gold" id="submitBtn">Submit request</button>
 <span id="submitStatus" style="margin-left:12px;color:var(--muted);font-size:.86rem;"></span>
 </div>
@@ -49,8 +72,8 @@
 <section>
 <h2 style="margin-bottom:12px;">Your requests</h2>
 <table>
-<thead><tr><th>Description</th><th>Status</th><th>Submitted</th></tr></thead>
-<tbody id="requestBody"><tr><td colspan="3">Loading&hellip;</td></tr></tbody>
+<thead><tr><th>Description</th><th>Type</th><th>Started</th><th>Status</th><th>Submitted</th></tr></thead>
+<tbody id="requestBody"><tr><td colspan="5">Loading&hellip;</td></tr></tbody>
 </table>
 </section>
 </main>

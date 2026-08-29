@@ -36,6 +36,14 @@ CREATE INDEX IF NOT EXISTS idx_payments_tenant ON payments(tenant_id);
 CREATE TABLE IF NOT EXISTS maintenance_requests (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   tenant_id INTEGER NOT NULL REFERENCES tenants(id),
+  -- Free-text category the tenant picks from a fixed dropdown on the
+  -- form (Plumbing, Electrical, etc.) -- not constrained here so the
+  -- dropdown's options can change without a migration.
+  issue_type TEXT,
+  -- Tenant-reported date the issue started (YYYY-MM-DD, from an HTML
+  -- date input). Optional -- not always known -- and stored as a plain
+  -- label, never used in date math.
+  issue_started_on TEXT,
   description TEXT NOT NULL,
   status TEXT NOT NULL DEFAULT 'open',
   created_at TEXT NOT NULL DEFAULT (datetime('now')),

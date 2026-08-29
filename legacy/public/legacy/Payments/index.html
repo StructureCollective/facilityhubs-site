@@ -8,10 +8,9 @@
 <meta name="theme-color" content="#0d2b5c">
 <link rel="stylesheet" href="../style.css">
 <style>
-  /* This tile is the interim "pay rent" flow -- it calls Stripe
-     Checkout directly. When the custom-built Stripe payment page
-     exists, swap payBtn's click handler (in app.js) to navigate there
-     instead of calling /legacy/api/tenants/:id/pay itself. */
+  /* Custom embedded checkout -- Stripe Elements' Payment Element,
+     mounted directly on this page (see app.js). Not a redirect to a
+     Stripe-hosted Checkout page. */
   .pay-hero {
     background: linear-gradient(135deg, var(--navy), var(--navy-dark));
     color: #fff; border-radius: 16px; padding: 28px 32px; margin-bottom: 28px;
@@ -22,10 +21,16 @@
   .pay-hero .due { font-size: .88rem; opacity: .85; }
   .pay-hero .pay-actions { text-align: right; }
   .pay-hero .sub { color: rgba(255,255,255,.85); margin-top: 8px; }
+  #paymentFormSection {
+    background: #fff; border: 1px solid var(--line); border-radius: 12px; padding: 24px;
+    box-shadow: var(--shadow);
+  }
+  #paymentElement { margin-bottom: 4px; }
   .toolbar { display: flex; gap: 10px; margin-bottom: 16px; flex-wrap: wrap; }
   .toolbar input[type="text"], .toolbar select { width: auto; }
   .toolbar input[type="text"] { min-width: 240px; }
 </style>
+<script src="https://js.stripe.com/v3/"></script>
 </head>
 <body>
 <div id="loadingMsg" class="loading">Loading&hellip;</div>
@@ -66,6 +71,16 @@
 <div class="pay-actions">
 <button class="btn gold" id="payBtn">Pay rent</button>
 <div class="sub" id="payStatus"></div>
+</div>
+</section>
+
+<section id="paymentFormSection" hidden>
+<h2 style="margin-bottom:16px;">Complete payment</h2>
+<div id="paymentElement"></div>
+<div style="margin-top:18px;display:flex;align-items:center;gap:14px;">
+<button class="btn gold" id="confirmPayBtn">Submit payment</button>
+<button class="btn secondary" id="cancelPayBtn" type="button" style="background:#fff;color:var(--navy);border:1.5px solid var(--line-strong);">Cancel</button>
+<span id="confirmPayStatus" style="color:var(--muted);font-size:.86rem;"></span>
 </div>
 </section>
 

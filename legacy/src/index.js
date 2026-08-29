@@ -394,7 +394,7 @@ async function handleApi(request, env, url) {
     if (!requireAdmin(session)) return json({ error: 'Forbidden' }, 403);
 
     const requests = await env.DB.prepare(
-      `SELECT m.id, m.description, m.status, m.created_at, m.updated_at,
+      `SELECT m.id, m.issue_type, m.issue_started_on, m.description, m.status, m.created_at, m.updated_at,
               t.id AS tenant_id, t.full_name, t.unit_label
        FROM maintenance_requests m
        JOIN tenants t ON t.id = m.tenant_id
@@ -454,7 +454,7 @@ async function handleApi(request, env, url) {
     const access = await resolveTenantAccess(request, env, maintenanceMatch[1]);
     if (access.error) return access.error;
     const requests = await env.DB.prepare(
-      `SELECT id, description, status, created_at, updated_at
+      `SELECT id, issue_type, issue_started_on, description, status, created_at, updated_at
        FROM maintenance_requests WHERE tenant_id = ? ORDER BY created_at DESC`
     ).bind(access.tenantId).all();
     return json({ requests: requests.results });
@@ -467,12 +467,18 @@ async function handleApi(request, env, url) {
     if (!tenant) return json({ error: 'not found' }, 404);
     const body = await request.json().catch(() => ({}));
     const description = body.description ? String(body.description).trim() : '';
-    if (!description) {
-      return json({ error: 'description is required' }, 400);
+    const issueType = body.issueType ? String(body.issueType).trim() : '';
+    // Optional -- a tenant may not know exactly when an issue started.
+    // Expected as YYYY-MM-DD (an HTML date input's native value); stored
+    // as-is rather than parsed, since it's just a label, not used in any
+    // date math.
+    const issueStartedOn = body.issueStartedOn ? String(body.issueStartedOn).trim() : null;
+    if (!description || !issueType) {
+      return json({ error: 'issueType and description are required' }, 400);
     }
     await env.DB.prepare(
-      `INSERT INTO maintenance_requests (tenant_id, description) VALUES (?, ?)`
-    ).bind(tenant.id, description).run();
+      `INSERT INTO maintenance_requests (tenant_id, issue_type, issue_started_on, description) VALUES (?, ?, ?, ?)`
+    ).bind(tenant.id, issueType, issueStartedOn, description).run();
 
     await sendEmail(env, {
       to: 'legacy@facilityhubs.com',
@@ -480,6 +486,8 @@ async function handleApi(request, env, url) {
       replyTo: tenant.email,
       html: `<p><strong>Tenant:</strong> ${escapeHtml(tenant.full_name)}${tenant.unit_label ? ` (${escapeHtml(tenant.unit_label)})` : ''}</p>
 <p><strong>Email:</strong> ${escapeHtml(tenant.email)}</p>
+<p><strong>Type:</strong> ${escapeHtml(issueType)}</p>
+${issueStartedOn ? `<p><strong>Issue started:</strong> ${escapeHtml(issueStartedOn)}</p>` : ''}
 <p><strong>Request:</strong></p>
 <p>${escapeHtml(description)}</p>`,
     });
@@ -499,33 +507,35 @@ async function handleApi(request, env, url) {
 
     const late = await lateFeeInfo(env, tenant);
     const amountCents = tenant.rent_amount_cents + (late.lateFeeApplies ? late.lateFeeCents : 0);
+    const periodLabel = currentPeriodLabel(tenant.due_day);
 
+    // Embedded custom checkout (Stripe Elements' Payment Element) rather
+    // than a redirect to a Stripe-hosted Checkout page -- the client
+    // mounts the Payment Element using this PaymentIntent's client
+    // secret and submits it in place on the Payments page.
     const stripe = new Stripe(env.STRIPE_SECRET_KEY, { httpClient: Stripe.createFetchHttpClient() });
-    const session = await stripe.checkout.sessions.create({
-      mode: 'payment',
-      payment_method_types: ['card', 'us_bank_account'],
-      line_items: [{
-        price_data: {
-          currency: 'usd',
-          product_data: {
-            name: `Rent - ${tenant.unit_label || tenant.full_name}` + (late.lateFeeApplies ? ' (includes late fee)' : ''),
-          },
-          unit_amount: amountCents,
-        },
-        quantity: 1,
-      }],
-      success_url: `${url.origin}/legacy/Payments/?paid=1`,
-      cancel_url: `${url.origin}/legacy/Payments/?canceled=1`,
-      customer_email: tenant.email,
-      metadata: { tenant_id: String(tenant.id) },
+    const paymentIntent = await stripe.paymentIntents.create({
+      amount: amountCents,
+      currency: 'usd',
+      automatic_payment_methods: { enabled: true },
+      receipt_email: tenant.email,
+      description: `Rent - ${tenant.unit_label || tenant.full_name}` + (late.lateFeeApplies ? ' (includes late fee)' : ''),
+      metadata: { tenant_id: String(tenant.id), period_label: periodLabel },
     });
 
     await env.DB.prepare(
-      `INSERT INTO payments (tenant_id, amount_cents, status, stripe_checkout_session_id, period_label)
+      `INSERT INTO payments (tenant_id, amount_cents, status, stripe_payment_intent_id, period_label)
        VALUES (?, ?, 'pending', ?, ?)`
-    ).bind(tenant.id, amountCents, session.id, currentPeriodLabel(tenant.due_day)).run();
+    ).bind(tenant.id, amountCents, paymentIntent.id, periodLabel).run();
 
-    return json({ url: session.url });
+    return json({ clientSecret: paymentIntent.client_secret });
+  }
+
+  // Publishable keys are meant to be public -- safe to hand to any
+  // caller, signed in or not. The Payments page fetches this to
+  // initialize Stripe.js before mounting the Payment Element.
+  if (path === '/stripe/config' && request.method === 'GET') {
+    return json({ publishableKey: env.STRIPE_PUBLISHABLE_KEY || null });
   }
 
   return json({ error: 'not found' }, 404);
@@ -552,18 +562,17 @@ async function handleStripeWebhook(request, env) {
     return new Response(`Webhook signature verification failed: ${err.message}`, { status: 400 });
   }
 
-  if (event.type === 'checkout.session.completed') {
-    const session = event.data.object;
+  if (event.type === 'payment_intent.succeeded') {
+    const pi = event.data.object;
     await env.DB.prepare(
-      `UPDATE payments SET status = 'succeeded', paid_at = datetime('now'), stripe_payment_intent_id = ?
-       WHERE stripe_checkout_session_id = ?`
-    ).bind(session.payment_intent, session.id).run();
+      `UPDATE payments SET status = 'succeeded', paid_at = datetime('now') WHERE stripe_payment_intent_id = ?`
+    ).bind(pi.id).run();
 
     const paid = await env.DB.prepare(
       `SELECT p.amount_cents, p.period_label, t.email, t.full_name, t.unit_label
        FROM payments p JOIN tenants t ON t.id = p.tenant_id
-       WHERE p.stripe_checkout_session_id = ?`
-    ).bind(session.id).first();
+       WHERE p.stripe_payment_intent_id = ?`
+    ).bind(pi.id).first();
     if (paid && paid.email) {
       const firstName = paid.full_name ? paid.full_name.split(' ')[0] : 'there';
       await sendEmail(env, {
@@ -576,11 +585,11 @@ async function handleStripeWebhook(request, env) {
 <p>Thank you,<br>Legacy Property Hub</p>`,
       });
     }
-  } else if (event.type === 'checkout.session.expired') {
-    const session = event.data.object;
+  } else if (event.type === 'payment_intent.payment_failed' || event.type === 'payment_intent.canceled') {
+    const pi = event.data.object;
     await env.DB.prepare(
-      `UPDATE payments SET status = 'failed' WHERE stripe_checkout_session_id = ? AND status = 'pending'`
-    ).bind(session.id).run();
+      `UPDATE payments SET status = 'failed' WHERE stripe_payment_intent_id = ? AND status = 'pending'`
+    ).bind(pi.id).run();
   }
 
   return json({ received: true });

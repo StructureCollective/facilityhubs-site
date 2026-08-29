@@ -12,6 +12,16 @@
     });
   }
 
+  // For issue_started_on -- a plain YYYY-MM-DD label (no time component),
+  // so it's parsed/displayed as UTC to avoid shifting a day depending on
+  // the viewer's timezone.
+  function fmtDateOnly(dateStr) {
+    if (!dateStr) return '—';
+    return new Date(dateStr + 'T00:00:00Z').toLocaleDateString('en-US', {
+      year: 'numeric', month: 'short', day: 'numeric', timeZone: 'UTC',
+    });
+  }
+
   function esc(v) {
     return String(v).replace(/[&<>'"]/g, function (c) {
       return ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' })[c];
@@ -57,7 +67,13 @@
       });
 
     $('submitBtn').addEventListener('click', function () {
+      const issueType = $('issueType').value;
+      const issueStartedOn = $('issueStarted').value; // '' if left blank
       const description = $('description').value.trim();
+      if (!issueType) {
+        $('submitStatus').textContent = 'Please select a type.';
+        return;
+      }
       if (!description) {
         $('submitStatus').textContent = 'Please describe the issue first.';
         return;
@@ -67,7 +83,11 @@
       fetch('/legacy/api/tenants/me/maintenance', {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ description: description }),
+        body: JSON.stringify({
+          issueType: issueType,
+          issueStartedOn: issueStartedOn || null,
+          description: description,
+        }),
       })
         .then(function (r) { return r.json().then(function (d) { return { ok: r.ok, data: d }; }); })
         .then(function (res) {
@@ -76,6 +96,8 @@
             $('submitStatus').textContent = res.data.error || 'Could not submit request.';
             return;
           }
+          $('issueType').value = '';
+          $('issueStarted').value = '';
           $('description').value = '';
           $('submitStatus').textContent = 'Request submitted.';
           loadRequests();
@@ -92,17 +114,18 @@
       .then(function (r) { return r.json(); })
       .then(function (data) { renderRequests(data.requests || []); })
       .catch(function () {
-        $('requestBody').innerHTML = '<tr><td colspan="3">Could not load requests.</td></tr>';
+        $('requestBody').innerHTML = '<tr><td colspan="5">Could not load requests.</td></tr>';
       });
   }
 
   function renderRequests(requests) {
     if (!requests.length) {
-      $('requestBody').innerHTML = '<tr><td colspan="3">No requests yet.</td></tr>';
+      $('requestBody').innerHTML = '<tr><td colspan="5">No requests yet.</td></tr>';
       return;
     }
     $('requestBody').innerHTML = requests.map(function (r) {
-      return '<tr><td>' + esc(r.description) + '</td><td><span class="pill ' + esc(r.status) + '">' +
+      return '<tr><td>' + esc(r.description) + '</td><td>' + esc(r.issue_type || '—') + '</td><td>' +
+        fmtDateOnly(r.issue_started_on) + '</td><td><span class="pill ' + esc(r.status) + '">' +
         esc(r.status) + '</span></td><td>' + fmtDate(r.created_at) + '</td></tr>';
     }).join('');
   }

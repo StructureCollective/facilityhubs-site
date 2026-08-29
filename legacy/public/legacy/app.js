@@ -22,6 +22,7 @@
     var form = document.getElementById('emailForm');
     var submitBtn = document.getElementById('submitBtn');
     var emailInput = document.getElementById('emailInput');
+    var backBtn = document.getElementById('backToSigninBtn');
 
     form.addEventListener('submit', function (e) {
       e.preventDefault();
@@ -43,6 +44,18 @@
           document.getElementById('signinView').hidden = true;
           document.getElementById('sentView').hidden = false;
         });
+    });
+
+    backBtn.addEventListener('click', function () {
+      // Let them try again -- e.g. they typed the wrong email -- without
+      // reloading the page. Reset the button/field state left over from
+      // the previous submission.
+      document.getElementById('sentView').hidden = true;
+      document.getElementById('signinView').hidden = false;
+      submitBtn.disabled = false;
+      submitBtn.textContent = 'Send Sign-In Link';
+      emailInput.value = '';
+      emailInput.focus();
     });
   });
 })();

@@ -99,7 +99,7 @@
     var filtered = allMaintenance.filter(function (r) {
       if (statusFilter && r.status !== statusFilter) return false;
       if (!q) return true;
-      var haystack = (r.full_name + ' ' + (r.unit_label || '') + ' ' + r.description).toLowerCase();
+      var haystack = (r.full_name + ' ' + (r.unit_label || '') + ' ' + r.description + ' ' + (r.issue_type || '')).toLowerCase();
       return haystack.indexOf(q) !== -1;
     });
     if (!filtered.length) {
@@ -109,7 +109,8 @@
     }
     $('allMaintenanceBody').innerHTML = filtered.map(function (r) {
       return '<tr><td>' + esc(r.full_name) + '</td><td>' + esc(r.unit_label || '—') + '</td><td>' +
-        esc(r.description) + '</td><td><span class="pill ' + esc(r.status) + '">' + esc(r.status) +
+        esc(r.description) + '</td><td>' + esc(r.issue_type || '—') + '</td><td>' +
+        fmtDate(r.issue_started_on) + '</td><td><span class="pill ' + esc(r.status) + '">' + esc(r.status) +
         '</span></td><td>' + fmtDate(r.created_at) + '</td></tr>';
     }).join('');
   }
@@ -130,10 +131,14 @@
       return;
     }
     $('tenantBody').innerHTML = tenants.map(function (t) {
+      var statusPill = t.paidCurrentPeriod
+        ? '<span class="pill current">Current</span>'
+        : '<span class="pill late">Late</span>';
       return '<tr class="row-click" data-id="' + t.id + '" data-name="' + esc(t.fullName) + '" data-unit="' + esc(t.unitLabel || '') + '">' +
         '<td>' + esc(t.fullName) + '<br><span style="color:var(--muted);font-size:.8rem;">' + esc(t.email) + '</span></td>' +
         '<td>' + esc(t.unitLabel || '—') + '</td>' +
         '<td>' + money(t.rentAmountCents) + '</td>' +
+        '<td>' + statusPill + '</td>' +
         '<td>' + fmtDate(t.nextDueDate) + '</td>' +
         '<td>' + fmtDate(t.last_paid_at) + '</td></tr>';
     }).join('');
@@ -204,7 +209,8 @@
       return;
     }
     $('maintenanceBody').innerHTML = requests.map(function (r) {
-      return '<tr><td>' + esc(r.description) + '</td><td><span class="pill ' + esc(r.status) + '">' +
+      return '<tr><td>' + esc(r.description) + '</td><td>' + esc(r.issue_type || '—') + '</td><td>' +
+        fmtDate(r.issue_started_on) + '</td><td><span class="pill ' + esc(r.status) + '">' +
         esc(r.status) + '</span></td><td>' + fmtDate(r.created_at) + '</td></tr>';
     }).join('');
   }

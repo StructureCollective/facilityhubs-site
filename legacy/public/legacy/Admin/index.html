@@ -8,17 +8,56 @@
 <meta name="theme-color" content="#0d2b5c">
 <link rel="stylesheet" href="../style.css">
 <style>
+  /* Admin gets its own top nav bar instead of the left sidebar the
+     tenant pages use -- scoped to this page only, so it doesn't touch
+     Dashboard/Payments/Maintenance/Documents. */
+  .admin-nav {
+    background: var(--navy);
+    border-bottom: 3px solid var(--gold-strong);
+  }
+  .admin-nav-inner {
+    max-width: 1180px;
+    margin: 0 auto;
+    padding: 0 40px;
+    display: flex;
+    align-items: center;
+    gap: 28px;
+    height: 54px;
+  }
+  .admin-nav-brand { display: flex; align-items: baseline; gap: 8px; white-space: nowrap; }
+  .admin-nav-tag { font-family: var(--font-head); font-weight: 700; color: #fff; font-size: 1rem; }
+  .admin-nav-sub { color: rgba(255,255,255,.55); font-size: .78rem; }
+  .admin-nav-links { display: flex; gap: 4px; flex: 1; height: 100%; }
+  .admin-nav-links a {
+    display: flex; align-items: center; padding: 0 14px; height: 100%;
+    color: rgba(255,255,255,.75); text-decoration: none; font-size: .86rem; font-weight: 600;
+    cursor: pointer; border-bottom: 3px solid transparent; margin-bottom: -3px; white-space: nowrap;
+  }
+  .admin-nav-links a:hover { color: #fff; }
+  .admin-nav-links a.active { color: #fff; border-bottom-color: var(--gold-strong); }
+  .admin-nav-signout {
+    color: rgba(255,255,255,.7); text-decoration: none; font-size: .82rem; font-weight: 600; cursor: pointer; white-space: nowrap;
+  }
+  .admin-nav-signout:hover { color: var(--gold-strong); }
+  .admin-main {
+    padding: 32px 40px;
+    max-width: 1180px;
+    margin: 0 auto;
+    min-height: calc(100vh - 163px - 57px);
+  }
+
   .row-click { cursor: pointer; }
   .row-click:hover { background: var(--bg); }
   #tenantDetail { display: none; }
   #tenantDetail.open { display: block; }
   .backlink { display: inline-block; margin-bottom: 14px; font-size: .84rem; color: var(--navy); cursor: pointer; font-weight: 700; }
+  .backlink:hover { color: var(--gold-strong); }
   .detail-tabs { display: flex; gap: 8px; margin-bottom: 16px; }
   .detail-tabs button {
     background: #fff; border: 1px solid var(--line-strong); border-radius: 999px; padding: 8px 16px;
     font-size: .82rem; font-weight: 700; color: var(--muted); cursor: pointer;
   }
-  .detail-tabs button.active { background: var(--navy); color: #fff; border-color: var(--navy); }
+  .detail-tabs button.active { background: var(--gold-strong); color: #fff; border-color: var(--gold-strong); }
   #maintenanceList { display: none; }
   #maintenanceList.open { display: block; }
   .toolbar { display: flex; gap: 10px; margin-bottom: 16px; flex-wrap: wrap; }
@@ -29,24 +68,24 @@
 <body>
 <div id="loadingMsg" class="loading">Loading&hellip;</div>
 
-<div id="app" class="topbar-shell" hidden>
+<div id="app" class="admin-shell" hidden>
 <div class="topbar">
 <img src="/assets/legacy-logo.png" alt="Legacy Property Hub">
 </div>
-<div class="shell">
-<aside>
-<div class="greeting">
-<p class="hi">Admin</p>
-<p class="sub">Property Hub</p>
+<nav class="admin-nav">
+<div class="admin-nav-inner">
+<div class="admin-nav-brand">
+<span class="admin-nav-tag">Admin</span>
+<span class="admin-nav-sub">Property Hub</span>
 </div>
-<nav>
+<div class="admin-nav-links">
 <a class="active" id="navTenants" aria-current="page">Tenants</a>
 <a id="navMaintenance">Maintenance Requests</a>
-<div class="divider"></div>
-<a href="/legacy/" id="signOutLink">Sign Out</a>
+</div>
+<a href="/legacy/" id="signOutLink" class="admin-nav-signout">Sign Out</a>
+</div>
 </nav>
-</aside>
-<main>
+<main class="admin-main">
 <div id="tenantList">
 <header class="page-header">
 <h1>Tenants</h1>
@@ -54,8 +93,8 @@
 </header>
 <div id="apiNotice" class="notice error" hidden></div>
 <table>
-<thead><tr><th>Tenant</th><th>Address</th><th>Rent</th><th>Next due</th><th>Last paid</th></tr></thead>
-<tbody id="tenantBody"><tr><td colspan="5">Loading&hellip;</td></tr></tbody>
+<thead><tr><th>Tenant</th><th>Address</th><th>Rent</th><th>Status</th><th>Next due</th><th>Last paid</th></tr></thead>
+<tbody id="tenantBody"><tr><td colspan="6">Loading&hellip;</td></tr></tbody>
 </table>
 </div>
 
@@ -74,8 +113,8 @@
 </select>
 </div>
 <table>
-<thead><tr><th>Tenant</th><th>Unit</th><th>Description</th><th>Status</th><th>Submitted</th></tr></thead>
-<tbody id="allMaintenanceBody"><tr><td colspan="5">Loading&hellip;</td></tr></tbody>
+<thead><tr><th>Tenant</th><th>Unit</th><th>Description</th><th>Type</th><th>Started</th><th>Status</th><th>Submitted</th></tr></thead>
+<tbody id="allMaintenanceBody"><tr><td colspan="7">Loading&hellip;</td></tr></tbody>
 </table>
 </div>
 
@@ -94,12 +133,11 @@
 <tbody id="detailBody"><tr><td colspan="4">Loading&hellip;</td></tr></tbody>
 </table>
 <table id="maintenanceTable" hidden>
-<thead><tr><th>Description</th><th>Status</th><th>Submitted</th></tr></thead>
-<tbody id="maintenanceBody"><tr><td colspan="3">Loading&hellip;</td></tr></tbody>
+<thead><tr><th>Description</th><th>Type</th><th>Started</th><th>Status</th><th>Submitted</th></tr></thead>
+<tbody id="maintenanceBody"><tr><td colspan="5">Loading&hellip;</td></tr></tbody>
 </table>
 </div>
 </main>
-</div>
 <footer class="app-footer">
 <span class="brand">Legacy Property Hub</span>
 <a class="built-by" href="https://structurecollective.com" target="_blank" rel="noopener">
