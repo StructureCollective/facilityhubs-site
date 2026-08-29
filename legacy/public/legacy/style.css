@@ -24,7 +24,7 @@ body { margin: 0; background: var(--bg); font: 15px/1.5 var(--font-body); color:
 h1, h2 { font-family: var(--font-head); font-weight: 700; margin: 0; }
 
 .topbar {
-  height: 68px;
+  height: 182px;
   background: #fff;
   border-bottom: 1px solid var(--line);
   display: flex;
@@ -35,9 +35,9 @@ h1, h2 { font-family: var(--font-head); font-weight: 700; margin: 0; }
   top: 0;
   z-index: 10;
 }
-.topbar img { height: 50px; display: block; }
+.topbar img { height: 150px; display: block; }
 
-.shell { display: grid; grid-template-columns: 230px 1fr; min-height: calc(100vh - 68px); }
+.shell { display: grid; grid-template-columns: 230px 1fr; min-height: calc(100vh - 182px); }
 
 aside { background: var(--navy); padding: 28px 16px; }
 .greeting { padding: 0 10px 20px; margin-bottom: 12px; border-bottom: 1px solid rgba(255,255,255,.16); }
@@ -71,6 +71,18 @@ header.page-header p { color: var(--muted); margin: 6px 0 0; }
 .card .label { font-size: .78rem; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); font-weight: 700; }
 .card .value { font-family: var(--font-head); font-size: 1.9rem; margin-top: 6px; color: var(--navy); }
 .card .sub { font-size: .82rem; color: var(--muted); margin-top: 4px; }
+.card .sub a.pill-link {
+  display: inline-block;
+  padding: 5px 14px;
+  border-radius: 999px;
+  background: var(--bg);
+  border: 1px solid var(--line);
+  color: var(--navy);
+  font-weight: 700;
+  font-size: .78rem;
+  text-decoration: none;
+}
+.card .sub a.pill-link:hover { background: var(--navy); color: #fff; border-color: var(--navy); }
 .btn {
   display: inline-flex; align-items: center; gap: 8px; background: var(--navy); color: #fff;
   border: none; border-radius: 999px; padding: 12px 24px; font-weight: 700; font-size: .92rem;
@@ -100,8 +112,23 @@ section { margin-bottom: 32px; }
 [hidden] { display: none !important; }
 
 .app-footer {
-  padding: 24px 40px 36px;
-  font-size: .76rem;
+  position: sticky;
+  bottom: 0;
+  background: #fff;
+  border-top: 1px solid var(--line);
+  padding: 14px 28px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: .8rem;
+  z-index: 9;
+}
+.app-footer .brand {
+  font-family: var(--font-head);
+  font-weight: 700;
+  color: var(--navy);
+  font-size: .92rem;
 }
 .app-footer .built-by {
   display: inline-flex;
