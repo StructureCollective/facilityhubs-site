@@ -7,6 +7,7 @@
 (function () {
   const $ = function (id) { return document.getElementById(id); };
   let currentTenantId = null;
+  let currentTenantData = null;
   let allMaintenance = [];
 
   function money(cents) {
@@ -59,6 +60,9 @@
     $('maintenanceSearch').addEventListener('input', renderAllMaintenance);
     $('maintenanceStatusFilter').addEventListener('change', renderAllMaintenance);
     $('signOutLink').addEventListener('click', signOut);
+    $('editRentBtn').addEventListener('click', openRentEditor);
+    $('saveRentBtn').addEventListener('click', saveRentEdit);
+    $('cancelRentBtn').addEventListener('click', closeRentEditor);
     loadTenants();
   }
 
@@ -152,12 +156,120 @@
 
   function showDetail(id, name, unit) {
     currentTenantId = id;
+    currentTenantData = null;
+    closeRentEditor();
     $('maintenanceList').className = '';
     document.getElementById('tenantList').style.display = 'none';
     $('tenantDetail').className = 'open';
     $('detailName').textContent = name;
     $('detailUnit').textContent = unit;
     showTab('payments');
+  }
+
+  function openRentEditor() {
+    $('rentEditStatus').hidden = true;
+    $('editRentBtn').disabled = true;
+    fetch('/legacy/api/tenants/' + currentTenantId)
+      .then(function (r) { return r.json().then(function (d) { return { ok: r.ok, data: d }; }); })
+      .then(function (res) {
+        $('editRentBtn').disabled = false;
+        if (!res.ok) {
+          $('rentEditStatus').textContent = 'Could not load current rent details.';
+          $('rentEditStatus').hidden = false;
+          return;
+        }
+        currentTenantData = res.data.tenant;
+        $('rentAmountInput').value = (currentTenantData.rentAmountCents / 100).toFixed(2);
+        $('lateFeeInput').value = (currentTenantData.lateFeeCents / 100).toFixed(2);
+        $('lateFeeAfterDayInput').value = currentTenantData.lateFeeAfterDay || '';
+        $('editRentBtn').hidden = true;
+        $('rentEditForm').hidden = false;
+      })
+      .catch(function () {
+        $('editRentBtn').disabled = false;
+        $('rentEditStatus').textContent = 'Could not load current rent details.';
+        $('rentEditStatus').hidden = false;
+      });
+  }
+
+  function closeRentEditor() {
+    $('rentEditForm').hidden = true;
+    $('editRentBtn').hidden = false;
+    $('editRentBtn').disabled = false;
+    $('rentEditStatus').hidden = true;
+  }
+
+  function ordinal(n) {
+    var s = ['th', 'st', 'nd', 'rd'];
+    var v = n % 100;
+    return n + (s[(v - 20) % 10] || s[v] || s[0]);
+  }
+
+  function saveRentEdit() {
+    var rentDollars = parseFloat($('rentAmountInput').value);
+    var feeDollars = parseFloat($('lateFeeInput').value || '0');
+    var afterDayRaw = $('lateFeeAfterDayInput').value.trim();
+
+    if (!(rentDollars > 0)) {
+      $('rentEditStatus').textContent = 'Enter a valid rent amount.';
+      $('rentEditStatus').hidden = false;
+      return;
+    }
+    if (isNaN(feeDollars) || feeDollars < 0) {
+      $('rentEditStatus').textContent = 'Enter a valid late fee amount (or 0).';
+      $('rentEditStatus').hidden = false;
+      return;
+    }
+    var afterDay = null;
+    if (afterDayRaw) {
+      afterDay = parseInt(afterDayRaw, 10);
+      if (!(afterDay >= 1 && afterDay <= 28)) {
+        $('rentEditStatus').textContent = 'Late fee day must be between 1 and 28 (or left blank for no late fee).';
+        $('rentEditStatus').hidden = false;
+        return;
+      }
+    }
+
+    var rentAmountCents = Math.round(rentDollars * 100);
+    var lateFeeCents = Math.round(feeDollars * 100);
+    var name = currentTenantData ? currentTenantData.fullName : 'this tenant';
+    var summary = 'Rent: ' + money(rentAmountCents) +
+      (lateFeeCents ? ', late fee: ' + money(lateFeeCents) + (afterDay ? ' after the ' + ordinal(afterDay) : '') : ', no late fee');
+
+    if (!window.confirm('Change ' + name + '\'s rent and fees?\n\n' + summary + '\n\nThis applies to their upcoming payment.')) {
+      return;
+    }
+    if (!window.confirm('Please confirm once more to save this change for ' + name + '. This cannot be undone automatically.')) {
+      return;
+    }
+
+    $('saveRentBtn').disabled = true;
+    $('cancelRentBtn').disabled = true;
+    $('rentEditStatus').hidden = true;
+
+    fetch('/legacy/api/tenants/' + currentTenantId + '/rent', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ rentAmountCents: rentAmountCents, lateFeeCents: lateFeeCents, lateFeeAfterDay: afterDay }),
+    })
+      .then(function (r) { return r.json().then(function (d) { return { ok: r.ok, data: d }; }); })
+      .then(function (res) {
+        $('saveRentBtn').disabled = false;
+        $('cancelRentBtn').disabled = false;
+        if (!res.ok) {
+          $('rentEditStatus').textContent = res.data.error || 'Could not save changes.';
+          $('rentEditStatus').hidden = false;
+          return;
+        }
+        closeRentEditor();
+        loadTenants();
+      })
+      .catch(function () {
+        $('saveRentBtn').disabled = false;
+        $('cancelRentBtn').disabled = false;
+        $('rentEditStatus').textContent = 'Something went wrong. Please try again.';
+        $('rentEditStatus').hidden = false;
+      });
   }
 
   function showTab(which) {

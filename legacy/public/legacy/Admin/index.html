@@ -35,10 +35,11 @@
   }
   .admin-nav-links a:hover { color: #fff; }
   .admin-nav-links a.active { color: #fff; border-bottom-color: var(--gold-strong); }
-  .admin-nav-signout {
-    color: rgba(255,255,255,.7); text-decoration: none; font-size: .82rem; font-weight: 600; cursor: pointer; white-space: nowrap;
+  .admin-footer-left { display: flex; align-items: center; gap: 18px; }
+  .admin-footer-signout {
+    color: var(--muted); text-decoration: none; font-weight: 600; font-size: .8rem; cursor: pointer;
   }
-  .admin-nav-signout:hover { color: var(--gold-strong); }
+  .admin-footer-signout:hover { color: var(--gold-strong); }
   .admin-main {
     padding: 32px 40px;
     max-width: 1180px;
@@ -63,6 +64,14 @@
   .toolbar { display: flex; gap: 10px; margin-bottom: 16px; flex-wrap: wrap; }
   .toolbar input[type="text"], .toolbar select { width: auto; }
   .toolbar input[type="text"] { min-width: 240px; }
+
+  .rent-edit { margin-bottom: 20px; }
+  .rent-edit-form {
+    background: #fff; border: 1px solid var(--line-strong); border-radius: 12px;
+    padding: 20px 22px; margin-top: 12px; max-width: 640px;
+  }
+  .rent-edit-note { color: var(--muted); font-size: .82rem; margin: 4px 0 14px; }
+  .rent-edit-actions { display: flex; gap: 10px; }
 </style>
 </head>
 <body>
@@ -82,7 +91,6 @@
 <a class="active" id="navTenants" aria-current="page">Tenants</a>
 <a id="navMaintenance">Maintenance Requests</a>
 </div>
-<a href="/legacy/" id="signOutLink" class="admin-nav-signout">Sign Out</a>
 </div>
 </nav>
 <main class="admin-main">
@@ -124,6 +132,22 @@
 <h1 id="detailName">&nbsp;</h1>
 <p id="detailUnit"></p>
 </header>
+<div class="rent-edit">
+<button class="btn" id="editRentBtn">Edit Rent &amp; Fees</button>
+<div id="rentEditForm" class="rent-edit-form" hidden>
+<div class="field-row">
+<div class="field"><label>Rent amount ($)</label><input type="number" id="rentAmountInput" step="0.01" min="0"></div>
+<div class="field"><label>Late fee ($)</label><input type="number" id="lateFeeInput" step="0.01" min="0"></div>
+<div class="field"><label>Late fee applies after day of month</label><input type="number" id="lateFeeAfterDayInput" min="1" max="28" placeholder="Blank = no late fee"></div>
+</div>
+<p class="rent-edit-note">Applies to this tenant's upcoming rent payment -- past payment history is never changed. You'll be asked to confirm twice before anything is saved.</p>
+<div id="rentEditStatus" class="notice error" hidden></div>
+<div class="rent-edit-actions">
+<button class="btn gold" id="saveRentBtn">Save Changes</button>
+<button class="btn" id="cancelRentBtn" type="button" style="background:#fff;color:var(--navy);border:1.5px solid var(--line-strong);">Cancel</button>
+</div>
+</div>
+</div>
 <div class="detail-tabs">
 <button class="active" id="tabPayments">Payments</button>
 <button id="tabMaintenance">Maintenance Requests</button>
@@ -139,7 +163,10 @@
 </div>
 </main>
 <footer class="app-footer">
+<div class="admin-footer-left">
 <span class="brand">Legacy Property Hub</span>
+<a href="/legacy/" id="signOutLink" class="admin-footer-signout">Sign Out</a>
+</div>
 <a class="built-by" href="https://structurecollective.com" target="_blank" rel="noopener">
 <img src="/assets/structure-collective-icon.png" alt="" width="16" height="16">
 Built by Structure Collective

@@ -461,6 +461,41 @@ ${emailButton(link, 'Sign in to Legacy Property Hub')}
     return json({ ok: true });
   }
 
+  // Update a tenant's rent amount / late fee. Takes effect immediately on
+  // their *upcoming* payment (the amount is read fresh from `tenants` each
+  // time a PaymentIntent is created) -- it never rewrites already-recorded
+  // `payments` rows, so past history stays exactly as it was. The frontend
+  // gates this behind two confirmation prompts before it ever calls this;
+  // the endpoint itself still validates independently.
+  const rentMatch = path.match(/^\/tenants\/(\d+)\/rent$/);
+  if (rentMatch && request.method === 'POST') {
+    const session = await getSession(request, env);
+    if (!requireAdmin(session)) return json({ error: 'Forbidden' }, 403);
+
+    const tenantId = rentMatch[1];
+    const tenant = await loadTenant(env, tenantId);
+    if (!tenant) return json({ error: 'Tenant not found' }, 404);
+
+    const body = await request.json().catch(() => ({}));
+    const { rentAmountCents, lateFeeCents, lateFeeAfterDay } = body;
+
+    if (!Number.isInteger(rentAmountCents) || rentAmountCents <= 0) {
+      return json({ error: 'rentAmountCents must be a positive whole number of cents' }, 400);
+    }
+    if (lateFeeCents != null && (!Number.isInteger(lateFeeCents) || lateFeeCents < 0)) {
+      return json({ error: 'lateFeeCents must be a non-negative whole number of cents' }, 400);
+    }
+    if (lateFeeAfterDay != null && (!Number.isInteger(lateFeeAfterDay) || lateFeeAfterDay < 1 || lateFeeAfterDay > 28)) {
+      return json({ error: 'lateFeeAfterDay must be a day of month between 1 and 28' }, 400);
+    }
+
+    await env.DB.prepare(
+      `UPDATE tenants SET rent_amount_cents = ?, late_fee_cents = ?, late_fee_after_day = ? WHERE id = ?`
+    ).bind(rentAmountCents, lateFeeCents || 0, lateFeeAfterDay || null, tenantId).run();
+
+    return json({ ok: true });
+  }
+
   // ---- Tenant-scoped (own tenant, or admin) ----
 
   const tenantMatch = path.match(/^\/tenants\/(\d+|me)$/);
