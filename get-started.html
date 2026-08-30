@@ -1,0 +1,593 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Get Started | Facility Hubs</title>
+<meta name="description" content="Tell us about your business and we'll help you get onboarded to your own Facility Hub.">
+<link rel="canonical" href="https://facilityhubs.com/get-started.html">
+<link rel="icon" type="image/png" href="/assets/facility-hubs-favicon.png">
+<link rel="apple-touch-icon" href="/assets/apple-touch-icon.png">
+<link rel="manifest" href="/manifest.json">
+<meta name="theme-color" content="#0a2b70">
+
+<!-- Link preview tags -- these are what iMessage, SMS/RCS, Slack, and
+     social apps read to build a preview card when this URL is shared.
+     Without them most apps fall back to a bare link with no image. -->
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Facility Hubs">
+<meta property="og:title" content="Get Started | Facility Hubs">
+<meta property="og:description" content="Tell us about your business and we'll help you get onboarded to your own Facility Hub.">
+<meta property="og:url" content="https://facilityhubs.com/get-started.html">
+<meta property="og:image" content="https://facilityhubs.com/assets/og-image.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Get Started | Facility Hubs">
+<meta name="twitter:description" content="Tell us about your business and we'll help you get onboarded to your own Facility Hub.">
+<meta name="twitter:image" content="https://facilityhubs.com/assets/og-image.png">
+
+<style>
+  :root {
+    --navy: #0a2b70;
+    --navy-dark: #06235e;
+    --teal: #1fa9ae;
+    --blue: #3156e8;
+    --orange: #f2994a;
+    --ink: #0d1b3b;
+    --muted: #5b6b8c;
+    --line: #e2e7f0;
+    --canvas: #eef2fb;
+    --surface: #ffffff;
+    --shadow: 0 18px 40px rgba(15, 35, 75, 0.10);
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    padding-bottom: 88px;
+    background: var(--canvas);
+    color: var(--ink);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, Helvetica, sans-serif;
+  }
+
+  a { color: inherit; }
+
+  /* HEADER */
+  header.site-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 22px 48px;
+    background: #ffffff;
+    border-bottom: 1px solid var(--line);
+  }
+
+  .brand {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    text-decoration: none;
+  }
+
+  .brand-logo {
+    display: block;
+    height: 80px;
+    width: auto;
+  }
+
+  .brand-logo.footer {
+    height: 40px;
+  }
+
+  .top-nav {
+    display: flex;
+    align-items: center;
+    gap: 30px;
+    font-weight: 600;
+    font-size: 16px;
+  }
+
+  .top-nav a { text-decoration: none; color: var(--ink); }
+  .top-nav a:hover { color: var(--blue); }
+  .top-nav a[aria-current="page"]:not(.nav-cta) { color: var(--navy); }
+
+  .top-nav .nav-cta {
+    padding: 10px 20px;
+    border-radius: 999px;
+    background: var(--navy);
+    color: #ffffff;
+    font-weight: 700;
+  }
+
+  .top-nav .nav-cta:hover { background: var(--navy-dark); color: #ffffff; }
+
+  /* HERO */
+  .form-hero {
+    padding: 64px 24px 8px;
+    background: linear-gradient(180deg, #eef2fb 0%, #e7edfa 100%);
+    text-align: center;
+  }
+
+  .eyebrow {
+    display: inline-block;
+    margin: 0 0 16px;
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--blue);
+  }
+
+  .form-hero h1 {
+    max-width: 720px;
+    margin: 0 auto 18px;
+    font-size: 40px;
+    line-height: 1.15;
+    color: var(--navy);
+    font-weight: 800;
+    letter-spacing: -0.01em;
+  }
+
+  .form-hero p {
+    max-width: 600px;
+    margin: 0 auto;
+    color: #46557a;
+    font-size: 17px;
+    line-height: 1.6;
+  }
+
+  .trust-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    margin-top: 24px;
+    padding: 12px 22px;
+    border-radius: 999px;
+    background: #ffffff;
+    border: 1px solid var(--line);
+    box-shadow: 0 8px 20px rgba(15, 35, 75, 0.08);
+    color: var(--navy);
+    font-weight: 700;
+    font-size: 14.5px;
+  }
+
+  .trust-badge svg { flex: none; color: var(--teal); }
+
+  /* FORM CARD */
+  .form-wrap {
+    padding: 40px 24px 64px;
+  }
+
+  .form-card {
+    max-width: 760px;
+    margin: 0 auto;
+    padding: 44px 48px;
+    border-radius: 18px;
+    background: var(--surface);
+    box-shadow: var(--shadow);
+    text-align: left;
+  }
+
+  .form-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+  }
+
+  .field {
+    margin-bottom: 20px;
+  }
+
+  .field label {
+    display: block;
+    font-size: 13.5px;
+    font-weight: 700;
+    color: var(--navy);
+    margin-bottom: 7px;
+  }
+
+  .field .optional {
+    font-weight: 500;
+    color: var(--muted);
+    text-transform: none;
+    letter-spacing: 0;
+  }
+
+  .field input,
+  .field select,
+  .field textarea {
+    width: 100%;
+    padding: 13px 16px;
+    border: 1px solid #ccd4e6;
+    border-radius: 10px;
+    background: #fbfcfe;
+    font-size: 15.5px;
+    font-family: inherit;
+    color: var(--ink);
+  }
+
+  .field textarea {
+    min-height: 120px;
+    resize: vertical;
+  }
+
+  .field input:focus,
+  .field select:focus,
+  .field textarea:focus {
+    outline: none;
+    border-color: var(--navy);
+    box-shadow: 0 0 0 3px rgba(10, 43, 112, 0.12);
+  }
+
+  fieldset.field {
+    border: 0;
+    margin: 0 0 24px;
+    padding: 0;
+  }
+
+  fieldset.field legend {
+    padding: 0;
+    font-size: 13.5px;
+    font-weight: 700;
+    color: var(--navy);
+    margin-bottom: 10px;
+  }
+
+  .capability-checks {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px 20px;
+  }
+
+  .capability-checks label {
+    display: flex;
+    align-items: flex-start;
+    gap: 9px;
+    font-size: 14.5px;
+    font-weight: 500;
+    color: var(--ink);
+    cursor: pointer;
+  }
+
+  .capability-checks input {
+    width: auto;
+    margin-top: 3px;
+    accent-color: var(--navy);
+  }
+
+  /* honeypot -- hidden from real visitors, left open for bots */
+  .hp-field {
+    position: absolute;
+    left: -9999px;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+  }
+
+  .submit-row {
+    display: flex;
+    align-items: center;
+    gap: 18px;
+    margin-top: 8px;
+  }
+
+  .submit-btn {
+    padding: 15px 34px;
+    border: 0;
+    border-radius: 10px;
+    background: var(--navy);
+    color: #ffffff;
+    font-weight: 700;
+    font-size: 16px;
+    cursor: pointer;
+  }
+
+  .submit-btn:hover { background: var(--navy-dark); }
+  .submit-btn:disabled { background: #9aa5bd; cursor: default; }
+
+  .form-status {
+    font-size: 14.5px;
+    font-weight: 600;
+  }
+
+  .form-status.error { color: #c0392b; }
+  .form-status.info { color: var(--muted); font-weight: 500; }
+
+  .success-panel {
+    text-align: center;
+    padding: 20px 4px 6px;
+  }
+
+  .success-panel .success-icon {
+    width: 56px;
+    height: 56px;
+    margin: 0 auto 18px;
+    border-radius: 50%;
+    background: #eaf7f0;
+    color: #2a8f57;
+    display: grid;
+    place-items: center;
+  }
+
+  .success-panel h2 {
+    margin: 0 0 10px;
+    color: var(--navy);
+    font-size: 22px;
+  }
+
+  .success-panel p {
+    margin: 0;
+    color: var(--muted);
+    font-size: 15.5px;
+    line-height: 1.6;
+  }
+
+  [hidden] { display: none !important; }
+
+  /* FOOTER */
+  footer.site-footer {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 100;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 16px 48px;
+    background: #ffffff;
+    border-top: 1px solid var(--line);
+    color: var(--muted);
+    font-size: 14px;
+  }
+
+  .footer-meta {
+    display: flex;
+    align-items: center;
+    gap: 26px;
+  }
+
+  .footer-links {
+    display: flex;
+    gap: 26px;
+  }
+
+  .footer-links a { text-decoration: none; color: var(--ink); font-weight: 600; }
+  .footer-links a:hover { color: var(--blue); }
+
+  .built-by {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    color: var(--muted);
+    font-size: 13px;
+    font-weight: 600;
+    text-decoration: none;
+  }
+
+  .built-by img { display: block; border-radius: 3px; }
+  .built-by:hover { color: var(--navy); text-decoration: underline; }
+
+  @media (max-width: 860px) {
+    header.site-header { padding: 18px 22px; }
+    .top-nav { gap: 18px; font-size: 14.5px; }
+    .form-hero { padding: 48px 18px 8px; }
+    .form-hero h1 { font-size: 30px; }
+    .form-card { padding: 30px 22px; }
+    .form-row { grid-template-columns: 1fr; gap: 0; }
+    .capability-checks { grid-template-columns: 1fr; }
+    footer.site-footer { flex-direction: column; gap: 10px; padding: 14px 20px; text-align: center; }
+    .footer-meta { flex-direction: column; gap: 6px; }
+  }
+</style>
+
+</head>
+<body>
+
+<header class="site-header">
+  <a class="brand" href="/">
+    <img class="brand-logo" src="/assets/facility-hubs-logo.png" alt="Facility Hubs">
+  </a>
+  <nav class="top-nav">
+    <a href="/about.html">About</a>
+    <a href="#support">Support</a>
+    <a href="/get-started.html" class="nav-cta" aria-current="page">Get Started</a>
+  </nav>
+</header>
+
+<section class="form-hero">
+  <span class="eyebrow">Get Started</span>
+  <h1>Let's get your business onboarded</h1>
+  <p>Tell us a bit about your business and what you need, and we'll follow up to talk through what your Facility Hub could look like.</p>
+  <div class="trust-badge">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <rect x="5" y="11" width="14" height="9" rx="2"/>
+      <path d="M8 11V8a4 4 0 0 1 8 0v3"/>
+    </svg>
+    Your information is used only to follow up about your hub
+  </div>
+</section>
+
+<section class="form-wrap">
+  <div class="form-card">
+
+    <form id="inquiryForm" novalidate>
+      <div class="form-row">
+        <div class="field">
+          <label for="fName">Full name</label>
+          <input type="text" id="fName" name="name" autocomplete="name" required>
+        </div>
+        <div class="field">
+          <label for="fBusiness">Business / organization name</label>
+          <input type="text" id="fBusiness" name="business" autocomplete="organization" required>
+        </div>
+      </div>
+
+      <div class="form-row">
+        <div class="field">
+          <label for="fEmail">Email address</label>
+          <input type="email" id="fEmail" name="email" autocomplete="email" required>
+        </div>
+        <div class="field">
+          <label for="fPhone">Phone <span class="optional">(optional)</span></label>
+          <input type="tel" id="fPhone" name="phone" autocomplete="tel">
+        </div>
+      </div>
+
+      <div class="field">
+        <label for="fTeamSize">Team size <span class="optional">(optional)</span></label>
+        <select id="fTeamSize" name="teamSize">
+          <option value="">Select one</option>
+          <option value="1-5">1-5</option>
+          <option value="6-20">6-20</option>
+          <option value="21-50">21-50</option>
+          <option value="51-200">51-200</option>
+          <option value="200+">200+</option>
+        </select>
+      </div>
+
+      <fieldset class="field">
+        <legend>What would you like your hub to include? <span class="optional">(optional)</span></legend>
+        <div class="capability-checks">
+          <label><input type="checkbox" name="capabilities" value="Employee and contractor directories">Employee and contractor directories</label>
+          <label><input type="checkbox" name="capabilities" value="Company documents and shared resources">Company documents and shared resources</label>
+          <label><input type="checkbox" name="capabilities" value="Policies, procedures, and training materials">Policies, procedures, and training materials</label>
+          <label><input type="checkbox" name="capabilities" value="Payment portals and financial links">Payment portals and financial links</label>
+          <label><input type="checkbox" name="capabilities" value="Vendor and supplier directories">Vendor and supplier directories</label>
+          <label><input type="checkbox" name="capabilities" value="Client or member information">Client or member information</label>
+          <label><input type="checkbox" name="capabilities" value="Internal request and intake forms">Internal request and intake forms</label>
+          <label><input type="checkbox" name="capabilities" value="Staff onboarding resources">Staff onboarding resources</label>
+          <label><input type="checkbox" name="capabilities" value="Scheduling and booking links">Scheduling and booking links</label>
+          <label><input type="checkbox" name="capabilities" value="Inventory and equipment records">Inventory and equipment records</label>
+          <label><input type="checkbox" name="capabilities" value="Property or facility information">Property or facility information</label>
+          <label><input type="checkbox" name="capabilities" value="Project dashboards and status updates">Project dashboards and status updates</label>
+          <label><input type="checkbox" name="capabilities" value="Frequently asked questions">Frequently asked questions</label>
+          <label><input type="checkbox" name="capabilities" value="Announcements and team updates">Announcements and team updates</label>
+          <label><input type="checkbox" name="capabilities" value="Quick access to commonly used software">Quick access to commonly used software</label>
+          <label><input type="checkbox" name="capabilities" value="Brand assets, templates, and marketing materials">Brand assets, templates, and marketing materials</label>
+        </div>
+      </fieldset>
+
+      <div class="field">
+        <label for="fMessage">Tell us about your business and what you need</label>
+        <textarea id="fMessage" name="message" required></textarea>
+      </div>
+
+      <!-- Honeypot: left blank by real visitors, invisible via CSS.
+           A filled value means a bot filled every field it could find. -->
+      <div class="field hp-field" aria-hidden="true">
+        <label for="fWebsite">Website</label>
+        <input type="text" id="fWebsite" name="website" tabindex="-1" autocomplete="off">
+      </div>
+
+      <div class="submit-row">
+        <button type="submit" class="submit-btn" id="submitBtn">Send Inquiry</button>
+        <span id="formStatus" class="form-status"></span>
+      </div>
+    </form>
+
+    <div id="successPanel" class="success-panel" hidden>
+      <div class="success-icon">
+        <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+          <path d="M20 6 9 17l-5-5"/>
+        </svg>
+      </div>
+      <h2>Thanks -- we've got it.</h2>
+      <p>Your inquiry has been sent. We'll follow up at the email address you provided to talk through what your Facility Hub could look like.</p>
+    </div>
+
+  </div>
+</section>
+
+<footer class="site-footer">
+  <div class="brand">
+    <img class="brand-logo footer" src="/assets/facility-hubs-icon.png" alt="Facility Hubs">
+  </div>
+
+  <div class="footer-meta">
+    <div class="footer-links">
+      <a href="#privacy">Privacy</a>
+      <a href="#support">Support</a>
+    </div>
+    <span>&copy; <span id="year"></span> Facility Hubs. All rights reserved.</span>
+  </div>
+
+  <a class="built-by" href="https://structurecollective.com" target="_blank" rel="noopener">
+    <img src="/assets/structure-collective-icon.png" alt="" width="16" height="16">
+    Built by Structure Collective
+  </a>
+</footer>
+
+<script>
+  document.getElementById('year').textContent = new Date().getFullYear();
+
+  // Fixed footer: keep the page's bottom padding in sync with the
+  // footer's actual rendered height so content never sits underneath it.
+  (function () {
+    var footer = document.querySelector('footer.site-footer');
+    function syncFooterSpacing() {
+      if (footer) document.body.style.paddingBottom = footer.offsetHeight + 'px';
+    }
+    syncFooterSpacing();
+    window.addEventListener('load', syncFooterSpacing);
+    window.addEventListener('resize', syncFooterSpacing);
+  })();
+
+  // Submits the onboarding inquiry to the Cloudflare Worker at
+  // /api/onboarding-inquiry/submit, which emails it to
+  // admin@structurecollective.com from support@facilityhubs.com (see
+  // onboarding-worker/ in the repo). Swaps in a thank-you panel on
+  // success; shows an inline error and re-enables the form on failure.
+  var INQUIRY_ENDPOINT = '/api/onboarding-inquiry/submit';
+
+  var form = document.getElementById('inquiryForm');
+  var statusEl = document.getElementById('formStatus');
+  var submitBtn = document.getElementById('submitBtn');
+
+  form.addEventListener('submit', function (event) {
+    event.preventDefault();
+
+    if (!form.reportValidity()) return;
+
+    var data = new FormData(form);
+    var payload = {
+      name: data.get('name').trim(),
+      business: data.get('business').trim(),
+      email: data.get('email').trim(),
+      phone: (data.get('phone') || '').trim(),
+      teamSize: data.get('teamSize') || '',
+      capabilities: data.getAll('capabilities'),
+      message: data.get('message').trim(),
+      website: data.get('website') || '' // honeypot
+    };
+
+    submitBtn.disabled = true;
+    statusEl.textContent = 'Sending...';
+    statusEl.className = 'form-status info';
+
+    fetch(INQUIRY_ENDPOINT, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    })
+      .then(function (res) {
+        if (!res.ok) throw new Error('request-failed');
+        return res.json();
+      })
+      .then(function () {
+        form.hidden = true;
+        statusEl.textContent = '';
+        document.getElementById('successPanel').hidden = false;
+      })
+      .catch(function () {
+        statusEl.textContent = "Something went wrong sending your inquiry. Please try again, or email support@facilityhubs.com directly.";
+        statusEl.className = 'form-status error';
+        submitBtn.disabled = false;
+      });
+  });
+</script>
+
+</body>
+</html>

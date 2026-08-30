@@ -88,14 +88,25 @@
 
   .top-nav {
     display: flex;
-    gap: 36px;
+    align-items: center;
+    gap: 30px;
     font-weight: 600;
     font-size: 16px;
   }
 
   .top-nav a { text-decoration: none; color: var(--ink); }
   .top-nav a:hover { color: var(--blue); }
-  .top-nav a[aria-current="page"] { color: var(--navy); }
+  .top-nav a[aria-current="page"]:not(.nav-cta) { color: var(--navy); }
+
+  .top-nav .nav-cta {
+    padding: 10px 20px;
+    border-radius: 999px;
+    background: var(--navy);
+    color: #ffffff;
+    font-weight: 700;
+  }
+
+  .top-nav .nav-cta:hover { background: var(--navy-dark); color: #ffffff; }
 
   /* ABOUT HERO */
   .about-hero {
@@ -392,6 +403,7 @@
   <nav class="top-nav">
     <a href="/about.html" aria-current="page">About</a>
     <a href="#support">Support</a>
+    <a href="/get-started.html" class="nav-cta">Get Started</a>
   </nav>
 </header>
 

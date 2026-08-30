@@ -103,13 +103,24 @@
 
   .top-nav {
     display: flex;
-    gap: 36px;
+    align-items: center;
+    gap: 30px;
     font-weight: 600;
     font-size: 16px;
   }
 
   .top-nav a { text-decoration: none; color: var(--ink); }
   .top-nav a:hover { color: var(--blue); }
+
+  .top-nav .nav-cta {
+    padding: 10px 20px;
+    border-radius: 999px;
+    background: var(--navy);
+    color: #ffffff;
+    font-weight: 700;
+  }
+
+  .top-nav .nav-cta:hover { background: var(--navy-dark); color: #ffffff; }
 
   /* HERO */
   .hero {
@@ -137,6 +148,24 @@
     font-size: 19px;
     line-height: 1.5;
   }
+
+  .get-started-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    margin: 0 auto 28px;
+    padding: 12px 22px;
+    border-radius: 999px;
+    background: #ffffff;
+    border: 1px solid #ccd4e6;
+    color: var(--navy);
+    font-weight: 700;
+    font-size: 14.5px;
+    text-decoration: none;
+  }
+
+  .get-started-link:hover { border-color: var(--navy); background: #f5f8ff; }
+  .get-started-link svg { flex: none; }
 
   /* FIND YOUR HUB CARD */
   .finder-card {
@@ -381,12 +410,20 @@
   <nav class="top-nav">
     <a href="/about.html">About</a>
     <a href="#support">Support</a>
+    <a href="/get-started.html" class="nav-cta">Get Started</a>
   </nav>
 </header>
 
 <section class="hero">
   <h1>One place to access your facility tools.</h1>
   <p>Find your organization's secure hub to access the tools, directories, work orders, and resources your team uses every day.</p>
+
+  <a class="get-started-link" href="/get-started.html">
+    New here? Start your onboarding inquiry
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+      <path d="M5 12h14M13 6l6 6-6 6"/>
+    </svg>
+  </a>
 
   <div class="finder-card">
     <h2>Find Your Hub</h2>
