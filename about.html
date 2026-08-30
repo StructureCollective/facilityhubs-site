@@ -1,0 +1,479 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>About | Facility Hubs</title>
+<meta name="description" content="Facility Hubs builds customized internal business hubs that bring your resources, information, and everyday processes together in one secure, easy-to-use place.">
+<link rel="canonical" href="https://facilityhubs.com/about.html">
+<link rel="icon" type="image/png" href="/assets/facility-hubs-favicon.png">
+<link rel="apple-touch-icon" href="/assets/apple-touch-icon.png">
+<link rel="manifest" href="/manifest.json">
+<meta name="theme-color" content="#0a2b70">
+
+<!-- Link preview tags -- these are what iMessage, SMS/RCS, Slack, and
+     social apps read to build a preview card when this URL is shared.
+     Without them most apps fall back to a bare link with no image. -->
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Facility Hubs">
+<meta property="og:title" content="About | Facility Hubs">
+<meta property="og:description" content="Facility Hubs builds customized internal business hubs that bring your resources, information, and everyday processes together in one secure, easy-to-use place.">
+<meta property="og:url" content="https://facilityhubs.com/about.html">
+<meta property="og:image" content="https://facilityhubs.com/assets/og-image.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="About | Facility Hubs">
+<meta name="twitter:description" content="Facility Hubs builds customized internal business hubs that bring your resources, information, and everyday processes together in one secure, easy-to-use place.">
+<meta name="twitter:image" content="https://facilityhubs.com/assets/og-image.png">
+
+<style>
+  :root {
+    --navy: #0a2b70;
+    --navy-dark: #06235e;
+    --teal: #1fa9ae;
+    --blue: #3156e8;
+    --orange: #f2994a;
+    --ink: #0d1b3b;
+    --muted: #5b6b8c;
+    --line: #e2e7f0;
+    --canvas: #eef2fb;
+    --surface: #ffffff;
+    --shadow: 0 18px 40px rgba(15, 35, 75, 0.10);
+    /* Structure Collective's own brand orange, sampled from their mark --
+       used ONLY to emphasize mentions of Structure Collective below. */
+    --sc-orange: #d33b1b;
+    --sc-orange-light: #f3832a;
+    --sc-tint: #fdf1ea;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    padding-bottom: 88px;
+    background: var(--canvas);
+    color: var(--ink);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, Helvetica, sans-serif;
+  }
+
+  a { color: inherit; }
+
+  /* HEADER */
+  header.site-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 22px 48px;
+    background: #ffffff;
+    border-bottom: 1px solid var(--line);
+  }
+
+  .brand {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    text-decoration: none;
+  }
+
+  .brand-logo {
+    display: block;
+    height: 80px;
+    width: auto;
+  }
+
+  .brand-logo.footer {
+    height: 40px;
+  }
+
+  .top-nav {
+    display: flex;
+    gap: 36px;
+    font-weight: 600;
+    font-size: 16px;
+  }
+
+  .top-nav a { text-decoration: none; color: var(--ink); }
+  .top-nav a:hover { color: var(--blue); }
+  .top-nav a[aria-current="page"] { color: var(--navy); }
+
+  /* ABOUT HERO */
+  .about-hero {
+    padding: 76px 24px 64px;
+    background: linear-gradient(180deg, #eef2fb 0%, #e7edfa 100%);
+    text-align: center;
+  }
+
+  .eyebrow {
+    display: inline-block;
+    margin: 0 0 16px;
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--blue);
+  }
+
+  .about-hero h1 {
+    max-width: 760px;
+    margin: 0 auto 22px;
+    font-size: 44px;
+    line-height: 1.15;
+    color: var(--navy);
+    font-weight: 800;
+    letter-spacing: -0.01em;
+  }
+
+  .about-hero .lead {
+    max-width: 680px;
+    margin: 0 auto;
+    color: #46557a;
+    font-size: 18px;
+    line-height: 1.6;
+  }
+
+  /* CONTENT SECTIONS */
+  .about-section {
+    padding: 64px 24px;
+  }
+
+  .about-section.alt {
+    background: #ffffff;
+    border-top: 1px solid var(--line);
+    border-bottom: 1px solid var(--line);
+  }
+
+  .about-content {
+    max-width: 720px;
+    margin: 0 auto;
+  }
+
+  .about-content h2 {
+    margin: 0 0 22px;
+    font-size: 28px;
+    color: var(--navy);
+    font-weight: 800;
+    letter-spacing: -0.01em;
+  }
+
+  .about-content p {
+    margin: 0 0 20px;
+    font-size: 17px;
+    line-height: 1.7;
+    color: #3a4664;
+  }
+
+  .about-content p:last-child { margin-bottom: 0; }
+
+  .lead-statement {
+    margin: 32px 0;
+    padding: 24px 28px;
+    border-left: 4px solid var(--teal);
+    background: #f3fbfb;
+    border-radius: 0 12px 12px 0;
+    font-size: 20px;
+    font-weight: 700;
+    color: var(--navy);
+    line-height: 1.5;
+  }
+
+  /* CAPABILITIES LIST */
+  .capability-grid {
+    list-style: none;
+    margin: 28px 0 24px;
+    padding: 0;
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 14px 28px;
+  }
+
+  .capability-grid li {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    font-size: 15.5px;
+    line-height: 1.5;
+    color: var(--ink);
+  }
+
+  .capability-dot {
+    flex: none;
+    width: 10px;
+    height: 10px;
+    margin-top: 6px;
+    border-radius: 3px;
+  }
+
+  /* SC COLLAB SECTION */
+  .sc-section {
+    max-width: 760px;
+    margin: 0 auto;
+    padding: 40px 40px 36px;
+    background: var(--sc-tint);
+    border: 1px solid #f4dccb;
+    border-radius: 18px;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .sc-section::before {
+    content: "";
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 6px;
+    background: linear-gradient(90deg, var(--sc-orange-light), var(--sc-orange));
+  }
+
+  .sc-heading {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    margin: 0 0 20px;
+  }
+
+  .sc-heading img {
+    height: 34px;
+    width: auto;
+    flex: none;
+  }
+
+  .sc-heading h2 {
+    margin: 0;
+    font-size: 26px;
+    color: var(--navy);
+    font-weight: 800;
+    letter-spacing: -0.01em;
+  }
+
+  .sc-name {
+    color: var(--sc-orange);
+    font-weight: 700;
+  }
+
+  /* CTA */
+  .cta-section {
+    padding: 72px 24px;
+    background: var(--navy);
+    text-align: center;
+  }
+
+  .cta-section h2 {
+    margin: 0 0 16px;
+    font-size: 30px;
+    color: #ffffff;
+    font-weight: 800;
+    letter-spacing: -0.01em;
+  }
+
+  .cta-section p {
+    max-width: 620px;
+    margin: 0 auto 10px;
+    color: #c7d1ef;
+    font-size: 17px;
+    line-height: 1.6;
+  }
+
+  .cta-section .cta-question {
+    margin-top: 24px;
+    font-size: 18px;
+    font-weight: 700;
+    color: #ffffff;
+  }
+
+  .cta-button {
+    display: inline-block;
+    margin-top: 22px;
+    padding: 16px 36px;
+    border-radius: 10px;
+    background: #ffffff;
+    color: var(--navy);
+    font-weight: 700;
+    font-size: 16px;
+    text-decoration: none;
+  }
+
+  .cta-button:hover { background: #e7edfa; }
+
+  /* FOOTER */
+  footer.site-footer {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 100;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 16px 48px;
+    background: #ffffff;
+    border-top: 1px solid var(--line);
+    color: var(--muted);
+    font-size: 14px;
+  }
+
+  .footer-meta {
+    display: flex;
+    align-items: center;
+    gap: 26px;
+  }
+
+  .footer-links {
+    display: flex;
+    gap: 26px;
+  }
+
+  .footer-links a { text-decoration: none; color: var(--ink); font-weight: 600; }
+  .footer-links a:hover { color: var(--blue); }
+
+  .built-by {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    color: var(--muted);
+    font-size: 13px;
+    font-weight: 600;
+    text-decoration: none;
+  }
+
+  .built-by img { display: block; border-radius: 3px; }
+  .built-by:hover { color: var(--navy); text-decoration: underline; }
+
+  @media (max-width: 860px) {
+    header.site-header { padding: 18px 22px; }
+    .about-hero { padding: 52px 18px 48px; }
+    .about-hero h1 { font-size: 32px; }
+    .about-section { padding: 48px 18px; }
+    .about-content h2 { font-size: 24px; }
+    .capability-grid { grid-template-columns: 1fr; }
+    .sc-section { padding: 30px 24px 28px; }
+    .sc-heading h2 { font-size: 22px; }
+    .cta-section { padding: 52px 20px; }
+    .cta-section h2 { font-size: 24px; }
+    footer.site-footer { flex-direction: column; gap: 10px; padding: 14px 20px; text-align: center; }
+    .footer-meta { flex-direction: column; gap: 6px; }
+  }
+</style>
+
+</head>
+<body>
+
+<header class="site-header">
+  <a class="brand" href="/">
+    <img class="brand-logo" src="/assets/facility-hubs-logo.png" alt="Facility Hubs">
+  </a>
+  <nav class="top-nav">
+    <a href="/about.html" aria-current="page">About</a>
+    <a href="#support">Support</a>
+  </nav>
+</header>
+
+<section class="about-hero">
+  <span class="eyebrow">About Facility Hubs</span>
+  <h1>One central place for everything your business needs</h1>
+  <p class="lead">Facility Hubs creates customized internal business tools that bring your resources, information, and everyday processes together in one secure, easy-to-use location.</p>
+</section>
+
+<section class="about-section">
+  <div class="about-content">
+    <p>Small businesses often rely on a patchwork of spreadsheets, shared drives, payment links, forms, email threads, and disconnected software. As the business grows, finding the right information becomes harder, and simple tasks begin taking more time than they should.</p>
+
+    <div class="lead-statement">Facility Hubs provides a clearer way to work.</div>
+
+    <p>We build tailored digital hubs that give your team one central place to access the tools and information they use every day. Each hub is designed around your business, your workflows, and the people who need to use it.</p>
+  </div>
+</section>
+
+<section class="about-section alt">
+  <div class="about-content">
+    <h2>What can a Facility Hub do?</h2>
+    <p>Your hub can be designed to support a wide range of internal operations, including:</p>
+
+    <ul class="capability-grid">
+      <li><span class="capability-dot" style="background:var(--navy)"></span>Employee and contractor directories</li>
+      <li><span class="capability-dot" style="background:var(--teal)"></span>Company documents and shared resources</li>
+      <li><span class="capability-dot" style="background:var(--blue)"></span>Policies, procedures, and training materials</li>
+      <li><span class="capability-dot" style="background:var(--orange)"></span>Payment portals and financial links</li>
+      <li><span class="capability-dot" style="background:var(--navy)"></span>Vendor and supplier directories</li>
+      <li><span class="capability-dot" style="background:var(--teal)"></span>Client or member information</li>
+      <li><span class="capability-dot" style="background:var(--blue)"></span>Internal request and intake forms</li>
+      <li><span class="capability-dot" style="background:var(--orange)"></span>Staff onboarding resources</li>
+      <li><span class="capability-dot" style="background:var(--navy)"></span>Scheduling and booking links</li>
+      <li><span class="capability-dot" style="background:var(--teal)"></span>Inventory and equipment records</li>
+      <li><span class="capability-dot" style="background:var(--blue)"></span>Property or facility information</li>
+      <li><span class="capability-dot" style="background:var(--orange)"></span>Project dashboards and status updates</li>
+      <li><span class="capability-dot" style="background:var(--navy)"></span>Frequently asked questions</li>
+      <li><span class="capability-dot" style="background:var(--teal)"></span>Announcements and team updates</li>
+      <li><span class="capability-dot" style="background:var(--blue)"></span>Quick access to commonly used software</li>
+      <li><span class="capability-dot" style="background:var(--orange)"></span>Brand assets, templates, and marketing materials</li>
+    </ul>
+
+    <p>Whether you need a simple internal directory or a more complete business operations hub, the goal is the same: make important information easier to find, manage, and use.</p>
+  </div>
+</section>
+
+<section class="about-section">
+  <div class="about-content">
+    <h2>Built for small businesses</h2>
+    <p>Facility Hubs is designed for businesses that need better internal organization without the complexity, cost, or learning curve of a large enterprise system.</p>
+    <p>Instead of asking your team to adapt to rigid software, we create a practical solution that reflects how your business already works. Your hub can begin with the essentials and expand as your needs change.</p>
+    <p>The result is less time spent searching, fewer disconnected processes, and a more consistent experience for your team.</p>
+  </div>
+</section>
+
+<section class="about-section alt">
+  <div class="sc-section">
+    <div class="sc-heading">
+      <img src="/assets/structure-collective-icon.png" alt="">
+      <h2>Designed in collaboration with <span class="sc-name">Structure Collective</span></h2>
+    </div>
+    <p>Facility Hubs is developed in collaboration with <span class="sc-name">Structure Collective</span>, bringing together thoughtful business organization and practical digital solutions.</p>
+    <p>This partnership helps ensure that each hub is more than a collection of links or documents. It is intentionally structured to support clearer workflows, easier access to information, and more efficient day-to-day operations.</p>
+    <p>Together, Facility Hubs and <span class="sc-name">Structure Collective</span> help small businesses create the internal foundation they need to stay organized and grow with confidence.</p>
+  </div>
+</section>
+
+<section class="cta-section">
+  <h2>Let's build your business hub</h2>
+  <p>Every business operates differently. We'll work with you to understand what your team needs, identify what should live in your hub, and create a centralized space that makes running your business simpler.</p>
+  <p class="cta-question">Ready to bring everything together?</p>
+  <!-- TODO: point this at the real booking/contact link once one is set -->
+  <a class="cta-button" href="#" aria-disabled="true">Book a Consultation</a>
+</section>
+
+<footer class="site-footer">
+  <div class="brand">
+    <img class="brand-logo footer" src="/assets/facility-hubs-icon.png" alt="Facility Hubs">
+  </div>
+
+  <div class="footer-meta">
+    <div class="footer-links">
+      <a href="#privacy">Privacy</a>
+      <a href="#support">Support</a>
+    </div>
+    <span>&copy; <span id="year"></span> Facility Hubs. All rights reserved.</span>
+  </div>
+
+  <a class="built-by" href="https://structurecollective.com" target="_blank" rel="noopener">
+    <img src="/assets/structure-collective-icon.png" alt="" width="16" height="16">
+    Built by Structure Collective
+  </a>
+</footer>
+
+<script>
+  document.getElementById('year').textContent = new Date().getFullYear();
+
+  // Fixed footer: keep the page's bottom padding in sync with the
+  // footer's actual rendered height so content never sits underneath it.
+  (function () {
+    var footer = document.querySelector('footer.site-footer');
+    function syncFooterSpacing() {
+      if (footer) document.body.style.paddingBottom = footer.offsetHeight + 'px';
+    }
+    syncFooterSpacing();
+    window.addEventListener('load', syncFooterSpacing);
+    window.addEventListener('resize', syncFooterSpacing);
+  })();
+</script>
+
+</body>
+</html>
