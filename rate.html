@@ -1,0 +1,496 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Rate Your Hub | Facility Hubs</title>
+<meta name="description" content="Tell us how your Facility Hub is working out.">
+<!-- Intentionally not linked from any nav, footer, or sitemap -- reached
+     only via the star links in emails/rating-request-email.html. Kept
+     out of search results too. -->
+<meta name="robots" content="noindex, nofollow">
+<link rel="canonical" href="https://facilityhubs.com/rate.html">
+<link rel="icon" type="image/png" href="/assets/facility-hubs-favicon.png">
+<link rel="apple-touch-icon" href="/assets/apple-touch-icon.png">
+<meta name="theme-color" content="#0a2b70">
+
+<style>
+  :root {
+    --navy: #0a2b70;
+    --navy-dark: #06235e;
+    --teal: #1fa9ae;
+    --blue: #3156e8;
+    --orange: #f2994a;
+    --ink: #0d1b3b;
+    --muted: #5b6b8c;
+    --line: #e2e7f0;
+    --canvas: #eef2fb;
+    --surface: #ffffff;
+    --shadow: 0 18px 40px rgba(15, 35, 75, 0.10);
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    padding-bottom: 88px;
+    background: var(--canvas);
+    color: var(--ink);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, Helvetica, sans-serif;
+  }
+
+  a { color: inherit; }
+
+  /* HEADER -- minimal on purpose: brand mark only, no nav links, since
+     this page is reached only via an emailed link, not by browsing. */
+  header.site-header {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 26px 24px;
+    background: #ffffff;
+    border-bottom: 1px solid var(--line);
+  }
+
+  .brand {
+    display: flex;
+    align-items: center;
+    text-decoration: none;
+  }
+
+  .brand-logo {
+    display: block;
+    height: 44px;
+    width: auto;
+  }
+
+  .brand-logo.footer {
+    height: 40px;
+  }
+
+  /* HERO */
+  .rate-hero {
+    padding: 56px 24px 8px;
+    background: linear-gradient(180deg, #eef2fb 0%, #e7edfa 100%);
+    text-align: center;
+  }
+
+  .eyebrow {
+    display: inline-block;
+    margin: 0 0 16px;
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--blue);
+  }
+
+  .rate-hero h1 {
+    max-width: 620px;
+    margin: 0 auto 10px;
+    font-size: 34px;
+    line-height: 1.2;
+    color: var(--navy);
+    font-weight: 800;
+    letter-spacing: -0.01em;
+  }
+
+  .rate-hero p {
+    max-width: 520px;
+    margin: 0 auto;
+    color: #46557a;
+    font-size: 16px;
+    line-height: 1.6;
+  }
+
+  .rate-context {
+    display: inline-block;
+    margin-top: 18px;
+    padding: 9px 18px;
+    border-radius: 999px;
+    background: #ffffff;
+    border: 1px solid var(--line);
+    color: var(--navy);
+    font-weight: 700;
+    font-size: 13.5px;
+  }
+
+  /* CARD */
+  .rate-wrap {
+    padding: 36px 24px 64px;
+  }
+
+  .rate-card {
+    max-width: 520px;
+    margin: 0 auto;
+    padding: 40px 40px;
+    border-radius: 18px;
+    background: var(--surface);
+    box-shadow: var(--shadow);
+    text-align: center;
+  }
+
+  .star-row {
+    display: flex;
+    justify-content: center;
+    gap: 10px;
+    margin: 4px 0 8px;
+  }
+
+  .star-btn {
+    background: none;
+    border: 0;
+    padding: 4px;
+    cursor: pointer;
+    font-size: 46px;
+    line-height: 1;
+    color: #d7deed;
+    transition: color 0.12s, transform 0.12s;
+  }
+
+  .star-btn:hover { transform: translateY(-2px); }
+  .star-btn:focus-visible { outline: 2px solid var(--blue); outline-offset: 3px; border-radius: 6px; }
+  .star-btn.filled { color: var(--orange); }
+
+  .star-caption {
+    min-height: 20px;
+    margin: 6px 0 22px;
+    color: var(--muted);
+    font-weight: 700;
+    font-size: 14.5px;
+  }
+
+  .field {
+    margin-bottom: 20px;
+    text-align: left;
+  }
+
+  .field label {
+    display: block;
+    font-size: 13.5px;
+    font-weight: 700;
+    color: var(--navy);
+    margin-bottom: 7px;
+  }
+
+  .field .optional {
+    font-weight: 500;
+    color: var(--muted);
+    text-transform: none;
+    letter-spacing: 0;
+  }
+
+  .field textarea {
+    width: 100%;
+    padding: 13px 16px;
+    border: 1px solid #ccd4e6;
+    border-radius: 10px;
+    background: #fbfcfe;
+    font-size: 15.5px;
+    font-family: inherit;
+    color: var(--ink);
+    min-height: 100px;
+    resize: vertical;
+  }
+
+  .field textarea:focus {
+    outline: none;
+    border-color: var(--navy);
+    box-shadow: 0 0 0 3px rgba(10, 43, 112, 0.12);
+  }
+
+  /* honeypot -- hidden from real visitors, left open for bots */
+  .hp-field {
+    position: absolute;
+    left: -9999px;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+  }
+
+  .submit-btn {
+    width: 100%;
+    padding: 15px 34px;
+    border: 0;
+    border-radius: 10px;
+    background: var(--navy);
+    color: #ffffff;
+    font-weight: 700;
+    font-size: 16px;
+    cursor: pointer;
+  }
+
+  .submit-btn:hover { background: var(--navy-dark); }
+  .submit-btn:disabled { background: #9aa5bd; cursor: default; }
+
+  .form-status {
+    display: block;
+    margin-top: 14px;
+    font-size: 14.5px;
+    font-weight: 600;
+  }
+
+  .form-status.error { color: #c0392b; }
+  .form-status.info { color: var(--muted); font-weight: 500; }
+
+  .success-panel {
+    text-align: center;
+    padding: 6px 4px;
+  }
+
+  .success-panel .success-icon {
+    width: 56px;
+    height: 56px;
+    margin: 0 auto 18px;
+    border-radius: 50%;
+    background: #eaf7f0;
+    color: #2a8f57;
+    display: grid;
+    place-items: center;
+  }
+
+  .success-panel .success-stars {
+    font-size: 30px;
+    letter-spacing: 3px;
+    color: var(--orange);
+    margin: 0 0 14px;
+  }
+
+  .success-panel h2 {
+    margin: 0 0 10px;
+    color: var(--navy);
+    font-size: 22px;
+  }
+
+  .success-panel p {
+    margin: 0;
+    color: var(--muted);
+    font-size: 15.5px;
+    line-height: 1.6;
+  }
+
+  [hidden] { display: none !important; }
+
+  /* FOOTER */
+  footer.site-footer {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 100;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 16px 48px;
+    background: #ffffff;
+    border-top: 1px solid var(--line);
+    color: var(--muted);
+    font-size: 14px;
+  }
+
+  .footer-meta {
+    display: flex;
+    align-items: center;
+    gap: 26px;
+  }
+
+  .built-by {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    color: var(--muted);
+    font-size: 13px;
+    font-weight: 600;
+    text-decoration: none;
+  }
+
+  .built-by img { display: block; border-radius: 3px; }
+  .built-by:hover { color: var(--navy); text-decoration: underline; }
+
+  @media (max-width: 860px) {
+    .rate-hero { padding: 44px 18px 8px; }
+    .rate-hero h1 { font-size: 27px; }
+    .rate-card { padding: 30px 24px; }
+    .star-btn { font-size: 38px; }
+    footer.site-footer { flex-direction: column; gap: 10px; padding: 14px 20px; text-align: center; }
+    .footer-meta { flex-direction: column; gap: 6px; }
+  }
+</style>
+
+</head>
+<body>
+
+<header class="site-header">
+  <a class="brand" href="/">
+    <img class="brand-logo" src="/assets/facility-hubs-logo.png" alt="Facility Hubs">
+  </a>
+</header>
+
+<section class="rate-hero">
+  <span class="eyebrow">Quick Feedback</span>
+  <h1>How's your Facility Hub working out?</h1>
+  <p>Tap a star to rate your experience so far. It takes about ten seconds.</p>
+  <div id="hubContext" class="rate-context" hidden></div>
+</section>
+
+<section class="rate-wrap">
+  <div class="rate-card">
+
+    <form id="rateForm" novalidate>
+      <div class="star-row" id="starRow" role="radiogroup" aria-label="Rate your Facility Hub from 1 to 5 stars">
+        <button type="button" class="star-btn" data-value="1" role="radio" aria-checked="false" aria-label="1 star">★</button>
+        <button type="button" class="star-btn" data-value="2" role="radio" aria-checked="false" aria-label="2 stars">★</button>
+        <button type="button" class="star-btn" data-value="3" role="radio" aria-checked="false" aria-label="3 stars">★</button>
+        <button type="button" class="star-btn" data-value="4" role="radio" aria-checked="false" aria-label="4 stars">★</button>
+        <button type="button" class="star-btn" data-value="5" role="radio" aria-checked="false" aria-label="5 stars">★</button>
+      </div>
+      <span id="starCaption" class="star-caption"></span>
+
+      <div class="field">
+        <label for="fComment">Anything you'd like to add? <span class="optional">(optional)</span></label>
+        <textarea id="fComment" name="comment"></textarea>
+      </div>
+
+      <!-- Honeypot: left blank by real visitors, invisible via CSS.
+           A filled value means a bot filled every field it could find. -->
+      <div class="field hp-field" aria-hidden="true">
+        <label for="fWebsite">Website</label>
+        <input type="text" id="fWebsite" name="website" tabindex="-1" autocomplete="off">
+      </div>
+
+      <button type="submit" class="submit-btn" id="submitBtn" disabled>Submit rating</button>
+      <span id="formStatus" class="form-status"></span>
+    </form>
+
+    <div id="successPanel" class="success-panel" hidden>
+      <div class="success-icon">
+        <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+          <path d="M20 6 9 17l-5-5"/>
+        </svg>
+      </div>
+      <div id="successStars" class="success-stars"></div>
+      <h2>Thanks &mdash; we've got it.</h2>
+      <p>Your feedback helps us make Facility Hubs better. We appreciate you taking the time.</p>
+    </div>
+
+  </div>
+</section>
+
+<footer class="site-footer">
+  <div class="brand">
+    <img class="brand-logo footer" src="/assets/facility-hubs-icon.png" alt="Facility Hubs">
+  </div>
+  <div class="footer-meta">
+    <span>&copy; <span id="year"></span> Facility Hubs. All rights reserved.</span>
+  </div>
+  <a class="built-by" href="https://structurecollective.com" target="_blank" rel="noopener">
+    <img src="/assets/structure-collective-icon.png" alt="" width="16" height="16">
+    Built by Structure Collective
+  </a>
+</footer>
+
+<script>
+  document.getElementById('year').textContent = new Date().getFullYear();
+
+  (function () {
+    var footer = document.querySelector('footer.site-footer');
+    function syncFooterSpacing() {
+      if (footer) document.body.style.paddingBottom = footer.offsetHeight + 'px';
+    }
+    syncFooterSpacing();
+    window.addEventListener('load', syncFooterSpacing);
+    window.addEventListener('resize', syncFooterSpacing);
+  })();
+
+  // Reads score/name/email/hub off the query string -- these are the
+  // params the rating-request email's star links carry (see
+  // emails/rating-request-email.html), e.g.
+  // /rate.html?score=5&hub=GFS+Hub&email=you%40example.com&name=Jane
+  // The clicked star is pre-selected on load; nothing is sent to the
+  // worker until "Submit rating" is pressed, so a click on the email
+  // link alone never fires an email -- it only pre-fills this page.
+  var params = new URLSearchParams(window.location.search);
+  var urlScore = parseInt(params.get('score'), 10);
+  var context = { name: params.get('name') || '', email: params.get('email') || '', hub: params.get('hub') || '' };
+
+  var hubContextEl = document.getElementById('hubContext');
+  if (context.hub) {
+    hubContextEl.textContent = 'Rating your ' + context.hub;
+    hubContextEl.hidden = false;
+  }
+
+  var RATE_ENDPOINT = '/api/rating/submit';
+  var STAR_LABELS = { 1: 'Needs work', 2: 'Below expectations', 3: 'It’s okay', 4: 'Pretty good', 5: 'Love it!' };
+
+  var starButtons = Array.prototype.slice.call(document.querySelectorAll('.star-btn'));
+  var starCaption = document.getElementById('starCaption');
+  var submitBtn = document.getElementById('submitBtn');
+  var statusEl = document.getElementById('formStatus');
+  var form = document.getElementById('rateForm');
+  var selected = 0;
+
+  function renderStars(value) {
+    starButtons.forEach(function (btn) {
+      var v = parseInt(btn.getAttribute('data-value'), 10);
+      var filled = v <= value;
+      btn.classList.toggle('filled', filled);
+      btn.setAttribute('aria-checked', v === value ? 'true' : 'false');
+    });
+    starCaption.textContent = value ? value + ' of 5 — ' + STAR_LABELS[value] : '';
+    submitBtn.disabled = !value;
+  }
+
+  starButtons.forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      selected = parseInt(btn.getAttribute('data-value'), 10);
+      renderStars(selected);
+    });
+  });
+
+  if (urlScore >= 1 && urlScore <= 5) {
+    selected = urlScore;
+    renderStars(selected);
+  }
+
+  form.addEventListener('submit', function (event) {
+    event.preventDefault();
+    if (!selected) return;
+
+    var payload = {
+      score: selected,
+      name: context.name,
+      email: context.email,
+      hub: context.hub,
+      comment: document.getElementById('fComment').value.trim(),
+      website: document.getElementById('fWebsite').value || '' // honeypot
+    };
+
+    submitBtn.disabled = true;
+    statusEl.textContent = 'Sending...';
+    statusEl.className = 'form-status info';
+
+    fetch(RATE_ENDPOINT, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    })
+      .then(function (res) {
+        if (!res.ok) throw new Error('request-failed');
+        return res.json();
+      })
+      .then(function () {
+        form.hidden = true;
+        statusEl.textContent = '';
+        document.getElementById('successStars').textContent = '★'.repeat(selected) + '☆'.repeat(5 - selected);
+        document.getElementById('successPanel').hidden = false;
+      })
+      .catch(function () {
+        statusEl.textContent = 'Something went wrong sending your rating. Please try again, or email support@facilityhubs.com directly.';
+        statusEl.className = 'form-status error';
+        submitBtn.disabled = false;
+      });
+  });
+</script>
+
+</body>
+</html>
