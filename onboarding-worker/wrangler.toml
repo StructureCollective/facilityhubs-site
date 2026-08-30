@@ -3,23 +3,33 @@ main = "src/index.js"
 compatibility_date = "2026-08-28"
 
 # Gives you an instant https://facilityhubs-site-onboarding.<your-subdomain>.workers.dev
-# preview URL on every deploy, independent of the facilityhubs.com route below
-# (handy while previewing, or if that route fails because the logged-in
+# preview URL on every deploy, independent of the facilityhubs.com routes below
+# (handy while previewing, or if those routes fail because the logged-in
 # Cloudflare account does not manage the facilityhubs.com zone yet).
 workers_dev = true
 
-# This worker only handles the onboarding-inquiry API endpoint -- it
-# doesn't serve any static files, so (unlike legacy/) there's no
-# [assets] block. Everything else on facilityhubs.com (index.html,
-# about.html, get-started.html, gfs/, legacy/) keeps being served
-# exactly as it is today; this route just carves out one path for the
-# form's POST to land on.
+# This worker only handles the site's small form-submission API
+# endpoints -- it doesn't serve any static files, so (unlike legacy/)
+# there's no [assets] block. Everything else on facilityhubs.com
+# (index.html, about.html, get-started.html, support.html, gfs/,
+# legacy/) keeps being served exactly as it is today; these routes just
+# carve out two paths for each form's POST to land on. The worker's
+# `name` above stayed "facilityhubs-site-onboarding" even though it now
+# also handles support requests -- renaming it here would make wrangler
+# deploy a brand-new Worker instead of updating the one already live.
 [[routes]]
 pattern = "facilityhubs.com/api/onboarding-inquiry*"
+zone_name = "facilityhubs.com"
+
+[[routes]]
+pattern = "facilityhubs.com/api/support-request*"
 zone_name = "facilityhubs.com"
 
 # The real secret (RESEND_API_KEY) is set with `wrangler secret put`,
 # never written here. It can be the SAME Resend API key already used
 # by legacy/ -- Resend's domain verification for facilityhubs.com
 # covers every address at that domain, so support@facilityhubs.com
-# works with the same key without any extra Resend setup.
+# works with the same key without any extra Resend setup. If you've
+# already run `wrangler secret put RESEND_API_KEY` for this worker
+# (from setting up get-started.html), you do NOT need to run it again
+# for support.html -- it's the same worker/secret, just a new route.

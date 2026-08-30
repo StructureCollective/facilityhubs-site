@@ -1,36 +1,41 @@
 /*
- * Facility Hubs -- onboarding inquiry worker.
+ * Facility Hubs -- site forms worker.
  *
  * ---------------------------------------------------------------------
- * Handles the "Get Started" form on facilityhubs.com/get-started.html.
- * POST /api/onboarding-inquiry/submit with a JSON body emails the
- * inquiry to admin@structurecollective.com, sent from
- * support@facilityhubs.com via Resend (same account/domain as the
- * legacy hub's magic-link email -- see ../legacy/src/index.js -- so
- * this can reuse the same RESEND_API_KEY value, just set again as a
- * secret on THIS worker; Cloudflare Workers don't share secrets across
- * separate worker projects even when they're the same underlying key).
+ * Handles two forms on facilityhubs.com, both via Resend, both sent
+ * from support@facilityhubs.com (Resend's domain verification for
+ * facilityhubs.com covers any address at that domain, so this and
+ * legacy/src/index.js's magic-link email can share the same
+ * RESEND_API_KEY *value* -- though each worker still needs its own
+ * `wrangler secret put RESEND_API_KEY`, since Cloudflare Workers don't
+ * share secrets across separate worker projects):
+ *
+ *   POST /api/onboarding-inquiry/submit  (get-started.html)
+ *     -> one email to admin@structurecollective.com.
+ *
+ *   POST /api/support-request/submit  (support.html)
+ *     -> one email to admin@structurecollective.com, AND a branded
+ *        confirmation email back to whoever submitted the form.
  *
  * Unlike legacy's sendEmail(), which quietly no-ops without a
  * RESEND_API_KEY (fine there -- it's a side-effect on top of a payment
  * or maintenance request that already succeeded), a missing key or a
- * failed send here is the ENTIRE point of the request, so both are
- * surfaced as real error responses instead of being swallowed. Losing
- * a client inquiry silently would be worse than showing them an error.
+ * failed *admin* send here is the ENTIRE point of the request, so both
+ * are surfaced as real error responses instead of being swallowed.
+ * Losing an inquiry or support request silently would be worse than
+ * showing the visitor an error. The submitter's confirmation email
+ * (support-request only) is the exception -- see handleSupportRequest.
  * ---------------------------------------------------------------------
  */
 
 const ADMIN_TO = 'admin@structurecollective.com';
 const FROM = 'Facility Hubs <support@facilityhubs.com>';
 
-const MAX_LENGTHS = {
-  name: 200,
-  business: 200,
-  email: 320,
-  phone: 60,
-  teamSize: 20,
-  message: 5000,
-};
+// Absolute URL -- email clients don't resolve relative paths, and have
+// no notion of "this site's own origin" the way a browser does.
+const EMAIL_LOGO_URL = 'https://facilityhubs.com/assets/facility-hubs-logo.png';
+
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 function json(data, status = 200) {
   return new Response(JSON.stringify(data), {
@@ -52,77 +57,44 @@ function singleLine(v, maxLen) {
   return String(v || '').replace(/[\r\n]+/g, ' ').trim().slice(0, maxLen);
 }
 
-const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+// ---------------------------------------------------------------------
+// Shared branded email shell -- Facility Hubs' own navy/teal/blue/
+// orange palette (matching index.html/about.html/get-started.html),
+// with the full wordmark logo in the header. Every outgoing email from
+// this worker is wrapped in emailShell(); emailButton() builds a CTA
+// pill for ones that need it.
+// ---------------------------------------------------------------------
 
-function validate(body) {
-  const errors = [];
-  const name = singleLine(body.name, MAX_LENGTHS.name);
-  const business = singleLine(body.business, MAX_LENGTHS.business);
-  const email = singleLine(body.email, MAX_LENGTHS.email);
-  const phone = singleLine(body.phone, MAX_LENGTHS.phone);
-  const teamSize = singleLine(body.teamSize, MAX_LENGTHS.teamSize);
-  const message = String(body.message || '').trim().slice(0, MAX_LENGTHS.message);
-  const capabilities = Array.isArray(body.capabilities)
-    ? body.capabilities.map((c) => singleLine(c, 120)).filter(Boolean).slice(0, 16)
-    : [];
-
-  if (!name) errors.push('name is required');
-  if (!business) errors.push('business is required');
-  if (!email || !EMAIL_RE.test(email)) errors.push('a valid email is required');
-  if (!message) errors.push('message is required');
-
-  return {
-    errors,
-    data: { name, business, email, phone, teamSize, message, capabilities },
-  };
+function emailShell(bodyHtml) {
+  return `<div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,sans-serif;max-width:520px;margin:0 auto;">
+<div style="background:#ffffff;padding:22px 24px;text-align:center;border:1px solid #e2e7f0;border-bottom:3px solid #1fa9ae;border-radius:14px 14px 0 0;">
+<img src="${EMAIL_LOGO_URL}" alt="Facility Hubs" style="height:40px;display:block;margin:0 auto;">
+</div>
+<div style="background:#ffffff;padding:28px 28px;border:1px solid #e2e7f0;border-top:none;border-radius:0 0 14px 14px;color:#0d1b3b;font-size:15px;line-height:1.6;">
+${bodyHtml}
+<div style="margin-top:26px;padding-top:18px;border-top:1px solid #e2e7f0;text-align:center;color:#8b95ab;font-size:12px;">
+Facility Hubs &middot; <a href="mailto:support@facilityhubs.com" style="color:#8b95ab;">support@facilityhubs.com</a>
+</div>
+</div>
+</div>`;
 }
 
-function inquiryEmailHtml(d) {
-  const rows = [
-    ['Name', d.name],
-    ['Business', d.business],
-    ['Email', d.email],
-    ['Phone', d.phone || '—'],
-    ['Team size', d.teamSize || '—'],
-  ];
+function emailButton(url, label) {
+  return `<div style="text-align:center;margin:22px 0;">
+<a href="${url}" style="display:inline-block;background:#0a2b70;color:#ffffff;text-decoration:none;font-weight:700;padding:13px 26px;border-radius:999px;font-size:15px;">${label}</a>
+</div>`;
+}
 
-  const rowsHtml = rows.map(([label, value]) => `
+function fieldRowsHtml(rows) {
+  return rows.map(([label, value]) => `
     <tr>
       <td style="padding:8px 14px 8px 0;color:#5b6b8c;font-weight:700;font-size:13px;white-space:nowrap;vertical-align:top;">${escapeHtml(label)}</td>
       <td style="padding:8px 0;color:#0d1b3b;font-size:14.5px;vertical-align:top;">${escapeHtml(value)}</td>
     </tr>
   `).join('');
-
-  const capabilitiesHtml = d.capabilities.length
-    ? `<tr>
-         <td style="padding:8px 14px 8px 0;color:#5b6b8c;font-weight:700;font-size:13px;white-space:nowrap;vertical-align:top;">Wants</td>
-         <td style="padding:8px 0;color:#0d1b3b;font-size:14.5px;vertical-align:top;">${d.capabilities.map(escapeHtml).join('<br>')}</td>
-       </tr>`
-    : '';
-
-  return `
-  <div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,sans-serif;max-width:560px;margin:0 auto;">
-    <div style="background:#0a2b70;padding:22px 28px;border-radius:12px 12px 0 0;">
-      <span style="color:#ffffff;font-weight:800;font-size:17px;letter-spacing:-0.01em;">New onboarding inquiry</span>
-    </div>
-    <div style="background:#ffffff;border:1px solid #e2e7f0;border-top:0;border-radius:0 0 12px 12px;padding:26px 28px;">
-      <table role="presentation" style="border-collapse:collapse;width:100%;">
-        ${rowsHtml}
-        ${capabilitiesHtml}
-      </table>
-      <div style="margin-top:18px;padding-top:18px;border-top:1px solid #e2e7f0;">
-        <div style="color:#5b6b8c;font-weight:700;font-size:13px;margin-bottom:6px;">Message</div>
-        <div style="color:#0d1b3b;font-size:14.5px;line-height:1.6;white-space:pre-wrap;">${escapeHtml(d.message)}</div>
-      </div>
-    </div>
-    <p style="color:#8b95ab;font-size:12px;margin:16px 4px 0;">
-      Submitted from the Get Started form on facilityhubs.com. Reply to this
-      email to respond directly to ${escapeHtml(d.name)}.
-    </p>
-  </div>`;
 }
 
-async function sendInquiryEmail(env, data) {
+async function sendResendEmail(env, { to, replyTo, subject, html }) {
   const res = await fetch('https://api.resend.com/emails', {
     method: 'POST',
     headers: {
@@ -131,10 +103,10 @@ async function sendInquiryEmail(env, data) {
     },
     body: JSON.stringify({
       from: FROM,
-      to: [ADMIN_TO],
-      reply_to: data.email,
-      subject: `New onboarding inquiry — ${data.business}`,
-      html: inquiryEmailHtml(data),
+      to: Array.isArray(to) ? to : [to],
+      ...(replyTo ? { reply_to: replyTo } : {}),
+      subject,
+      html,
     }),
   });
 
@@ -144,45 +116,230 @@ async function sendInquiryEmail(env, data) {
   }
 }
 
+// =======================================================================
+// Onboarding inquiry (get-started.html)
+// =======================================================================
+
+const INQUIRY_MAX = {
+  name: 200, business: 200, email: 320, phone: 60, teamSize: 20, message: 5000,
+};
+
+function validateInquiry(body) {
+  const errors = [];
+  const name = singleLine(body.name, INQUIRY_MAX.name);
+  const business = singleLine(body.business, INQUIRY_MAX.business);
+  const email = singleLine(body.email, INQUIRY_MAX.email);
+  const phone = singleLine(body.phone, INQUIRY_MAX.phone);
+  const teamSize = singleLine(body.teamSize, INQUIRY_MAX.teamSize);
+  const message = String(body.message || '').trim().slice(0, INQUIRY_MAX.message);
+  const capabilities = Array.isArray(body.capabilities)
+    ? body.capabilities.map((c) => singleLine(c, 120)).filter(Boolean).slice(0, 16)
+    : [];
+
+  if (!name) errors.push('name is required');
+  if (!business) errors.push('business is required');
+  if (!email || !EMAIL_RE.test(email)) errors.push('a valid email is required');
+  if (!message) errors.push('message is required');
+
+  return { errors, data: { name, business, email, phone, teamSize, message, capabilities } };
+}
+
+function inquiryAdminEmailBody(d) {
+  const rowsHtml = fieldRowsHtml([
+    ['Name', d.name],
+    ['Business', d.business],
+    ['Email', d.email],
+    ['Phone', d.phone || '—'],
+    ['Team size', d.teamSize || '—'],
+  ]);
+
+  const capabilitiesHtml = d.capabilities.length
+    ? `<tr>
+         <td style="padding:8px 14px 8px 0;color:#5b6b8c;font-weight:700;font-size:13px;white-space:nowrap;vertical-align:top;">Wants</td>
+         <td style="padding:8px 0;color:#0d1b3b;font-size:14.5px;vertical-align:top;">${d.capabilities.map(escapeHtml).join('<br>')}</td>
+       </tr>`
+    : '';
+
+  return emailShell(`
+<p style="margin:0 0 18px;font-weight:800;color:#0a2b70;font-size:17px;">New onboarding inquiry</p>
+<table role="presentation" style="border-collapse:collapse;width:100%;">${rowsHtml}${capabilitiesHtml}</table>
+<div style="margin-top:18px;padding-top:18px;border-top:1px solid #e2e7f0;">
+<div style="color:#5b6b8c;font-weight:700;font-size:13px;margin-bottom:6px;">Message</div>
+<div style="font-size:14.5px;line-height:1.6;white-space:pre-wrap;">${escapeHtml(d.message)}</div>
+</div>
+<p style="color:#8b95ab;font-size:12px;margin-top:16px;">Submitted from the Get Started form on facilityhubs.com. Reply to this email to respond directly to ${escapeHtml(d.name)}.</p>
+`);
+}
+
+async function handleOnboardingInquiry(request, env) {
+  let body;
+  try {
+    body = await request.json();
+  } catch (err) {
+    return json({ ok: false, error: 'invalid JSON body' }, 400);
+  }
+
+  // Honeypot: a hidden field real visitors never see or fill. A
+  // non-empty value means a bot filled every field it could find --
+  // report success so it moves on, but never actually send the email.
+  if (body && typeof body.website === 'string' && body.website.trim()) {
+    return json({ ok: true });
+  }
+
+  const { errors, data } = validateInquiry(body || {});
+  if (errors.length) {
+    return json({ ok: false, error: errors.join('; ') }, 400);
+  }
+
+  if (!env.RESEND_API_KEY) {
+    console.error('Onboarding inquiry received but RESEND_API_KEY is not set.');
+    return json({ ok: false, error: 'email sending is not configured yet' }, 503);
+  }
+
+  try {
+    await sendResendEmail(env, {
+      to: ADMIN_TO,
+      replyTo: data.email,
+      subject: `New onboarding inquiry — ${data.business}`,
+      html: inquiryAdminEmailBody(data),
+    });
+  } catch (err) {
+    console.error('Onboarding inquiry email failed:', err);
+    return json({ ok: false, error: 'failed to send email' }, 502);
+  }
+
+  return json({ ok: true });
+}
+
+// =======================================================================
+// Support request (support.html) -- for existing clients with an issue
+// or an update request on their hub.
+// =======================================================================
+
+const SUPPORT_MAX = { name: 200, email: 320, hub: 100, requestType: 100, message: 5000 };
+
+function validateSupportRequest(body) {
+  const errors = [];
+  const name = singleLine(body.name, SUPPORT_MAX.name);
+  const email = singleLine(body.email, SUPPORT_MAX.email);
+  const hub = singleLine(body.hub, SUPPORT_MAX.hub);
+  const requestType = singleLine(body.requestType, SUPPORT_MAX.requestType);
+  const message = String(body.message || '').trim().slice(0, SUPPORT_MAX.message);
+
+  if (!name) errors.push('name is required');
+  if (!email || !EMAIL_RE.test(email)) errors.push('a valid email is required');
+  if (!hub) errors.push('hub is required');
+  if (!requestType) errors.push('request type is required');
+  if (!message) errors.push('message is required');
+
+  return { errors, data: { name, email, hub, requestType, message } };
+}
+
+function supportAdminEmailBody(d) {
+  const rowsHtml = fieldRowsHtml([
+    ['Name', d.name],
+    ['Email', d.email],
+    ['Hub', d.hub],
+    ['Request type', d.requestType],
+  ]);
+
+  return emailShell(`
+<p style="margin:0 0 18px;font-weight:800;color:#0a2b70;font-size:17px;">New support request</p>
+<table role="presentation" style="border-collapse:collapse;width:100%;">${rowsHtml}</table>
+<div style="margin-top:18px;padding-top:18px;border-top:1px solid #e2e7f0;">
+<div style="color:#5b6b8c;font-weight:700;font-size:13px;margin-bottom:6px;">Message</div>
+<div style="font-size:14.5px;line-height:1.6;white-space:pre-wrap;">${escapeHtml(d.message)}</div>
+</div>
+<p style="color:#8b95ab;font-size:12px;margin-top:16px;">Submitted from the Support form on facilityhubs.com. Reply to this email to respond directly to ${escapeHtml(d.name)}.</p>
+`);
+}
+
+function supportConfirmationEmailBody(d) {
+  const firstName = d.name.split(' ')[0] || d.name;
+  return emailShell(`
+<p>Hi ${escapeHtml(firstName)},</p>
+<p>Thanks for reaching out -- we've received your request and will get back to you as soon as we can.</p>
+<div style="background:#f5f8ff;border:1px solid #e2e7f0;border-radius:10px;padding:16px 18px;margin:18px 0;">
+<p style="margin:0 0 6px;"><strong>Hub:</strong> ${escapeHtml(d.hub)}</p>
+<p style="margin:0 0 10px;"><strong>Request type:</strong> ${escapeHtml(d.requestType)}</p>
+<p style="margin:0;white-space:pre-wrap;">${escapeHtml(d.message)}</p>
+</div>
+<p style="color:#5b6b8c;font-size:13px;">If anything above isn't right, just reply to this email and let us know.</p>
+<p style="margin-top:22px;">&mdash; Facility Hubs Support</p>
+`);
+}
+
+async function handleSupportRequest(request, env) {
+  let body;
+  try {
+    body = await request.json();
+  } catch (err) {
+    return json({ ok: false, error: 'invalid JSON body' }, 400);
+  }
+
+  if (body && typeof body.website === 'string' && body.website.trim()) {
+    return json({ ok: true });
+  }
+
+  const { errors, data } = validateSupportRequest(body || {});
+  if (errors.length) {
+    return json({ ok: false, error: errors.join('; ') }, 400);
+  }
+
+  if (!env.RESEND_API_KEY) {
+    console.error('Support request received but RESEND_API_KEY is not set.');
+    return json({ ok: false, error: 'email sending is not configured yet' }, 503);
+  }
+
+  // The admin notification is the critical path -- fail loudly if it
+  // doesn't go out, same reasoning as the onboarding inquiry above.
+  try {
+    await sendResendEmail(env, {
+      to: ADMIN_TO,
+      replyTo: data.email,
+      subject: `Support request — ${data.hub} — ${data.name}`,
+      html: supportAdminEmailBody(data),
+    });
+  } catch (err) {
+    console.error('Support request admin email failed:', err);
+    return json({ ok: false, error: 'failed to send email' }, 502);
+  }
+
+  // The submitter's confirmation is best-effort: the part that matters:
+  // (admin got notified) already succeeded above, so a hiccup sending
+  // the confirmation copy shouldn't turn into an error page for someone
+  // who *did* successfully reach support.
+  try {
+    await sendResendEmail(env, {
+      to: data.email,
+      subject: "We've received your request — Facility Hubs Support",
+      html: supportConfirmationEmailBody(data),
+    });
+  } catch (err) {
+    console.error('Support request confirmation email failed:', err);
+  }
+
+  return json({ ok: true });
+}
+
+// =======================================================================
+
 export default {
   async fetch(request, env) {
     const url = new URL(request.url);
 
-    if (request.method !== 'POST' || !url.pathname.endsWith('/submit')) {
+    if (request.method !== 'POST') {
       return json({ ok: false, error: 'not found' }, 404);
     }
 
-    let body;
-    try {
-      body = await request.json();
-    } catch (err) {
-      return json({ ok: false, error: 'invalid JSON body' }, 400);
+    if (url.pathname.endsWith('/onboarding-inquiry/submit')) {
+      return handleOnboardingInquiry(request, env);
     }
 
-    // Honeypot: a hidden field real visitors never see or fill. A
-    // non-empty value means a bot filled every field it could find --
-    // report success so it moves on, but never actually send the email.
-    if (body && typeof body.website === 'string' && body.website.trim()) {
-      return json({ ok: true });
+    if (url.pathname.endsWith('/support-request/submit')) {
+      return handleSupportRequest(request, env);
     }
 
-    const { errors, data } = validate(body || {});
-    if (errors.length) {
-      return json({ ok: false, error: errors.join('; ') }, 400);
-    }
-
-    if (!env.RESEND_API_KEY) {
-      console.error('Onboarding inquiry received but RESEND_API_KEY is not set.');
-      return json({ ok: false, error: 'email sending is not configured yet' }, 503);
-    }
-
-    try {
-      await sendInquiryEmail(env, data);
-    } catch (err) {
-      console.error('Onboarding inquiry email failed:', err);
-      return json({ ok: false, error: 'failed to send email' }, 502);
-    }
-
-    return json({ ok: true });
+    return json({ ok: false, error: 'not found' }, 404);
   },
 };
