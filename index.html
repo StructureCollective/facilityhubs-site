@@ -213,6 +213,49 @@
   .finder-message.error { color: #c0392b; }
   .finder-message.info { color: var(--muted); font-weight: 500; }
 
+  .results-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+    gap: 14px;
+    margin: 4px 2px 6px;
+  }
+
+  .hub-tile {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+    padding: 22px 16px;
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    background: #fbfcfe;
+    cursor: pointer;
+    text-align: center;
+    font-family: inherit;
+    color: var(--ink);
+    text-decoration: none;
+    transition: border-color .15s ease, box-shadow .15s ease, transform .15s ease;
+  }
+
+  .hub-tile:hover,
+  .hub-tile:focus-visible {
+    border-color: var(--navy);
+    box-shadow: 0 10px 24px rgba(15, 35, 75, 0.12);
+    transform: translateY(-2px);
+  }
+
+  .hub-tile img {
+    height: 44px;
+    width: auto;
+    max-width: 120px;
+    object-fit: contain;
+  }
+
+  .hub-tile span {
+    font-weight: 700;
+    font-size: 14.5px;
+  }
+
   /* FEATURE ROW */
   .features {
     max-width: 1080px;
@@ -268,6 +311,12 @@
     font-size: 14px;
   }
 
+  .footer-meta {
+    display: flex;
+    align-items: center;
+    gap: 26px;
+  }
+
   .footer-links {
     display: flex;
     gap: 26px;
@@ -275,6 +324,19 @@
 
   .footer-links a { text-decoration: none; color: var(--ink); font-weight: 600; }
   .footer-links a:hover { color: var(--blue); }
+
+  .built-by {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    color: var(--muted);
+    font-size: 13px;
+    font-weight: 600;
+    text-decoration: none;
+  }
+
+  .built-by img { display: block; border-radius: 3px; }
+  .built-by:hover { color: var(--navy); text-decoration: underline; }
 
   @media (max-width: 860px) {
     header.site-header { padding: 18px 22px; }
@@ -286,6 +348,7 @@
     .features { grid-template-columns: 1fr; gap: 28px; margin-top: 48px; }
     .feature { border-left: 0; padding: 0; }
     footer.site-footer { flex-direction: column; gap: 14px; text-align: center; }
+    .footer-meta { flex-direction: column; gap: 8px; }
   }
 </style>
 
@@ -318,9 +381,10 @@
         </svg>
         <input id="orgQuery" type="search" placeholder="Search by company or organization" autocomplete="off">
       </label>
-      <button id="continueButton" type="button">Continue</button>
+      <button id="continueButton" type="button">Search</button>
     </div>
     <p id="finderMessage" class="finder-message"></p>
+    <div id="resultsGrid" class="results-grid" hidden></div>
   </div>
 
   <div class="features">
@@ -365,74 +429,122 @@
   <div class="brand">
     <img class="brand-logo footer" src="/assets/facility-hubs-logo.png" alt="Facility Hubs">
   </div>
-  
-  <div class="footer-links">
-    <a href="#privacy">Privacy</a>
-    <a href="#support">Support</a>
+
+  <div class="footer-meta">
+    <div class="footer-links">
+      <a href="#privacy">Privacy</a>
+      <a href="#support">Support</a>
+    </div>
+    <span>&copy; <span id="year"></span> Facility Hubs. All rights reserved.</span>
   </div>
-  <span>&copy; <span id="year"></span> Facility Hubs. All rights reserved.</span>
+
+  <a class="built-by" href="https://structurecollective.com" target="_blank" rel="noopener">
+    <img src="/assets/structure-collective-icon.png" alt="" width="16" height="16">
+    Built by Structure Collective
+  </a>
 </footer>
 
 <script>
   document.getElementById('year').textContent = new Date().getFullYear();
 
-  // Maps an organization search to its hub path. Add new orgs here as
-  // more hubs go live (each key is matched case-insensitively against
-  // the search box; list every alias you want to resolve).
+  // Maps an organization search to its hub. Add new orgs here as more
+  // hubs go live (each key is matched case-insensitively against the
+  // search box; list every alias you want to resolve). "path" is the
+  // hub's sign-in page -- where a matched tile sends people.
   var HUB_DIRECTORY = [
     {
       match: ['gfs', "gregg's facility solutions", 'greggs facility solutions', 'vendorsync'],
-      path: '/gfs/Dashboard/',
-      label: "Gregg's Facility Solutions"
+      path: '/gfs/login/',
+      label: "Gregg's Facility Solutions",
+      logo: '/assets/gfs-logo.png'
     },
     {
       match: ['legacy', 'legacy property hub', 'legacy properties'],
       path: '/legacy/',
-      label: 'Legacy Property Hub'
+      label: 'Legacy Property Hub',
+      logo: '/assets/legacy-logo.png'
     }
   ];
 
-  function findHub(query) {
+  function findHubs(query) {
     var normalized = query.trim().toLowerCase();
-    if (!normalized) return null;
+    if (!normalized) return [];
 
+    var matches = [];
     for (var i = 0; i < HUB_DIRECTORY.length; i++) {
       var entry = HUB_DIRECTORY[i];
       for (var j = 0; j < entry.match.length; j++) {
-        if (entry.match[j] === normalized || normalized.indexOf(entry.match[j]) !== -1) {
-          return entry;
+        if (entry.match[j] === normalized ||
+            entry.match[j].indexOf(normalized) !== -1 ||
+            normalized.indexOf(entry.match[j]) !== -1) {
+          matches.push(entry);
+          break;
         }
       }
     }
-    return null;
+    return matches;
   }
 
-  function goToHub() {
+  function renderResults(hubs) {
+    var grid = document.getElementById('resultsGrid');
+    grid.innerHTML = '';
+
+    hubs.forEach(function (hub) {
+      var tile = document.createElement('button');
+      tile.type = 'button';
+      tile.className = 'hub-tile';
+
+      var img = document.createElement('img');
+      img.src = hub.logo;
+      img.alt = hub.label;
+
+      var name = document.createElement('span');
+      name.textContent = hub.label;
+
+      tile.appendChild(img);
+      tile.appendChild(name);
+      tile.addEventListener('click', function () {
+        window.location.href = hub.path;
+      });
+
+      grid.appendChild(tile);
+    });
+
+    grid.hidden = hubs.length === 0;
+  }
+
+  function searchHubs() {
     var input = document.getElementById('orgQuery');
     var message = document.getElementById('finderMessage');
+    var grid = document.getElementById('resultsGrid');
     var query = input.value;
 
+    grid.hidden = true;
+    grid.innerHTML = '';
+
     if (!query.trim()) {
-      message.textContent = 'Enter a company or organization name to continue.';
+      message.textContent = 'Enter a company or organization name to search.';
       message.className = 'finder-message error';
       return;
     }
 
-    var hub = findHub(query);
+    var hubs = findHubs(query);
 
-    if (hub) {
-      message.textContent = 'Redirecting to ' + hub.label + '…';
+    if (hubs.length) {
+      message.textContent = hubs.length === 1
+        ? '1 hub found. Select it to continue.'
+        : hubs.length + ' hubs found. Select yours to continue.';
       message.className = 'finder-message info';
-      window.location.href = hub.path;
+      renderResults(hubs);
     } else {
       message.textContent = "We couldn't find a hub for \"" + query + '". Contact support if you believe this is a mistake.';
       message.className = 'finder-message error';
     }
   }
 
-  document.getElementById('continueButton').addEventListener('click', goToHub);
+  document.getElementById('continueButton').addEventListener('click', searchHubs);
   document.getElementById('orgQuery').addEventListener('keydown', function (event) {
-    if (event.key === 'Enter') goToHub();
+    if (event.key === 'Enter') searchHubs();
   });
 </script>
 
