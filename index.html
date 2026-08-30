@@ -253,10 +253,21 @@
     object-fit: contain;
   }
 
-  .hub-tile span {
+  .hub-tile .hub-name {
     font-weight: 700;
     font-size: 14.5px;
   }
+
+  .hub-tile .hub-note {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 11.5px;
+    font-weight: 600;
+    color: var(--muted);
+  }
+
+  .hub-tile .hub-note svg { flex: none; color: #8b96b3; }
 
   /* FEATURE ROW */
   .features {
@@ -517,10 +528,16 @@
       img.alt = hub.label;
 
       var name = document.createElement('span');
+      name.className = 'hub-name';
       name.textContent = hub.label;
+
+      var note = document.createElement('span');
+      note.className = 'hub-note';
+      note.innerHTML = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg>Password protected · Org access only';
 
       tile.appendChild(img);
       tile.appendChild(name);
+      tile.appendChild(note);
       tile.addEventListener('click', function () {
         window.location.href = hub.path;
       });
