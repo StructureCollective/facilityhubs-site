@@ -144,6 +144,12 @@
         esc([[office.city, office.state].filter(Boolean).join(', '), office.zipCode].filter(Boolean).join(' ')) +
         '</span>' +
         '</div>' +
+        '<div class="contact-field">' +
+        '<b>PHONE</b>' +
+        '<span>' + phoneMarkup(office.phone) + '</span>' +
+        '<b>OFFICE HOURS</b>' +
+        '<span>' + esc(office.officeHours || '—') + '</span>' +
+        '</div>' +
         '<div class="office-action">' +
         '<a class="map-button" href="' + esc(office.mapUrl || '#') + '" target="_blank" rel="noopener noreferrer">' +
         '&#8982; &nbsp; View Location</a>' +
@@ -198,5 +204,11 @@
     return String(value).replace(/[&<>'"]/g, function (c) {
       return ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' })[c];
     });
+  }
+
+  function phoneMarkup(phone) {
+    if (!phone) return '—';
+    const clean = String(phone).replace(/[^0-9+]/g, '');
+    return '<a href="tel:' + esc(clean) + '">' + esc(phone) + '</a>';
   }
 })();

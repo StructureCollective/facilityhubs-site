@@ -353,7 +353,7 @@ h2 {
 
 .office-card {
   display: grid;
-  grid-template-columns: minmax(190px, 1.1fr) 1.3fr auto;
+  grid-template-columns: minmax(170px, 1fr) minmax(170px, 1.05fr) minmax(150px, 0.95fr) auto;
   gap: 18px;
   align-items: start;
   min-height: 118px;
@@ -385,6 +385,35 @@ h2 {
   display: block;
   color: var(--ink);
   line-height: 1.4;
+}
+
+.contact-field b {
+  display: block;
+  margin-bottom: 5px;
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+}
+
+.contact-field b:not(:first-child) {
+  margin-top: 10px;
+}
+
+.contact-field span {
+  display: block;
+  color: var(--ink);
+  line-height: 1.4;
+}
+
+.contact-field a {
+  color: var(--navy);
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.contact-field a:hover {
+  text-decoration: underline;
 }
 
 .address-lines span {
@@ -550,6 +579,15 @@ footer > span:nth-child(2) {
 
   .office-grid {
     grid-template-columns: 1fr;
+  }
+
+  .office-card {
+    grid-template-columns: 1fr 1fr;
+    row-gap: 14px;
+  }
+
+  .office-action {
+    grid-column: 1 / -1;
   }
 
   .filter-row {
