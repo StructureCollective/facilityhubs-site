@@ -1,0 +1,205 @@
+// ---------------------------------------------------------------
+// PASTE THIS AT THE END OF Code.gs IN THE "VendorSync" APPS SCRIPT
+// PROJECT (the one whose exec URL matches apiUrl in gfs/config.js).
+//
+// HOW TO RUN:
+// 1. Open the VendorSync Apps Script project.
+// 2. Open Code.gs, scroll to the very end, paste everything below.
+// 3. Save (Ctrl+S / Cmd+S).
+// 4. In the function dropdown next to "Run", choose
+//    "populatePhoneNumbers" and click Run. This is a DRY RUN --
+//    it only writes to the execution log (View > Logs, or the
+//    "Execution log" panel), it does NOT touch the spreadsheet.
+// 5. Check the log: it should say "MATCHED 47 of 56." along with a
+//    line per office showing which phone number it matched and how
+//    confident the match was. Skim it for anything that looks wrong.
+// 6. If it looks right, switch the dropdown to
+//    "populatePhoneNumbersLive" and click Run. THIS one writes a
+//    "Phone" header + phone numbers into column F of the
+//    "Riccobene Directory" tab in the "GFS - Preferred Vendor
+//    Master List" spreadsheet.
+// 7. Re-open that spreadsheet tab to confirm column F populated.
+//
+// Matches 47 of 56 offices automatically (zip code + address/name
+// matching against Brush & Floss's public locations page). The 9
+// that don't match are newer offices not yet listed there --
+// Chesterfield, Crozet, Greenville, Mt Pleasant, Old Midlothian,
+// Palmyra, Prince George, Shelby, Simpsonville. Those need manual
+// lookup separately.
+// ---------------------------------------------------------------
+
+function populatePhoneNumbers() {
+  populatePhoneNumbersImpl_(true); // dry run: logs only, no writes
+}
+
+function populatePhoneNumbersLive() {
+  populatePhoneNumbersImpl_(false); // writes column F for real
+}
+
+function populatePhoneNumbersImpl_(dryRun) {
+  var CSV_DATA = [
+    {n:"Apex",p:"919-466-7000",a:"966 US-64",c:"Apex",s:"NC",z:"27523"},
+    {n:"Ashland",p:"804-798-2776",a:"130 Thompson Street",c:"Ashland",s:"VA",z:"23005"},
+    {n:"Benson",p:"919-207-2077",a:"12330 Highway 210, Suite 115",c:"Benson",s:"NC",z:"27504"},
+    {n:"Burlington",p:"336-331-7002",a:"3735 S Church St #101",c:"Burlington",s:"NC",z:"27215"},
+    {n:"Carolina Shores/Calabash",p:"910-292-8428",a:"9869 Ocean Hwy W Suite 1 & 2",c:"Carolina Shores",s:"NC",z:"28467"},
+    {n:"Cary Dentistry for Kids",p:"919-851-0011",a:"1000 Crescent Green #200",c:"Cary",s:"NC",z:"27518"},
+    {n:"Cary Family - Crescent Green",p:"919-858-0088",a:"1000 Crescent Green #202",c:"Cary",s:"NC",z:"27518"},
+    {n:"Cary Orthodontics",p:"919-466-0909",a:"1203 NW Maynard Rd #1A",c:"Cary",s:"NC",z:"27513"},
+    {n:"Cary West",p:"919-858-0088",a:"1203 NW Maynard Rd #1A",c:"Cary",s:"NC",z:"27513"},
+    {n:"Charlotte - Independence",p:"980-265-3180",a:"6316 E Independence Blvd",c:"Charlotte",s:"NC",z:"28212"},
+    {n:"Charlotte University",p:"704-248-8327",a:"8320 University Executive Park Dr Suite A",c:"Charlotte",s:"NC",z:"28262"},
+    {n:"Charlotte - Williams Pond",p:"704-542-6090",a:"7940 Williams Pond Ln # 200",c:"Charlotte",s:"NC",z:"28277"},
+    {n:"Chesapeake",p:"757-488-3392",a:"4107 Portsmouth Blvd #107",c:"Chesapeake",s:"VA",z:"23321"},
+    {n:"Chester Specialty",p:"804-533-7433",a:"2930 W Hundred Road, Suite B",c:"Chester",s:"VA",z:"23831"},
+    {n:"Clayton",p:"919-550-5251",a:"31 Oleander Dr",c:"Clayton",s:"NC",z:"27527"},
+    {n:"Clayton Orthodontics",p:"919-296-1700",a:"31 Oleander Dr",c:"Clayton",s:"NC",z:"27527"},
+    {n:"Clemmons",p:"336-331-9368",a:"4168 Clemmons Rd",c:"Clemmons",s:"NC",z:"27012"},
+    {n:"Colonial Heights",p:"804-520-4088",a:"456 Charles H. Dimmock Pkwy, Suite #5",c:"Colonial Heights",s:"VA",z:"23834"},
+    {n:"Columbia",p:"803-212-0387",a:"9007 Two Notch Road, Suite B",c:"Columbia",s:"SC",z:"29223"},
+    {n:"Concord",p:"704-461-0707",a:"40 Pitts School Road SW",c:"Concord",s:"NC",z:"28027"},
+    {n:"Crewe",p:"434-645-7558",a:"600 W. Virginia Ave",c:"Crewe",s:"VA",z:"23930"},
+    {n:"Crozet",p:"434-823-2290",a:"325 Four Leaf Ln #10",c:"Charlottesville",s:"VA",z:"22903"},
+    {n:"Durham",p:"919-246-9057",a:"1125 NC-54 #807",c:"Durham",s:"NC",z:"27707"},
+    {n:"Fayetteville-Raeford",p:"910-864-2400",a:"6950 Nexus Ct",c:"Fayetteville",s:"NC",z:"28304"},
+    {n:"Fort Mill",p:"803-228-7380",a:"360 Fort Mill Parkway, Suite 101",c:"Fort Mill",s:"SC",z:"29715"},
+    {n:"Garner",p:"919-661-6161",a:"5638 Veterans Pkwy #214",c:"Garner",s:"NC",z:"27529"},
+    {n:"Garner Orthodontics and Pediatric",p:"919-772-1463",a:"5638 Veterans Pkwy Suite 109",c:"Garner",s:"NC",z:"27529"},
+    {n:"Goldsboro",p:"919-731-2331",a:"2702 Medical Office Pl",c:"Goldsboro",s:"NC",z:"27534"},
+    {n:"Greensboro",p:"336-854-2990",a:"604 Dolley Madison Rd",c:"Greensboro",s:"NC",z:"27410"},
+    {n:"Hampstead",p:"910-270-3602",a:"43 Shuckin St Suite 104",c:"Hampstead",s:"NC",z:"28443"},
+    {n:"Harrisburg",p:"980-825-7382",a:"13470 Plaza Rd Extension, Suite 100",c:"Charlotte",s:"NC",z:"28215"},
+    {n:"High Point",p:"336-841-0000",a:"2783 NC-68, Suite 107",c:"High Point",s:"NC",z:"27265"},
+    {n:"Holly Ridge",p:"910-329-8191",a:"200 US-17 N",c:"Holly Ridge",s:"NC",z:"28445"},
+    {n:"Kannapolis",p:"704-938-4211",a:"1829 S Ridge Ave",c:"Kannapolis",s:"NC",z:"28083"},
+    {n:"Kenbridge",p:"434-676-8023",a:"202 E. 5th Ave.",c:"Kenbridge",s:"VA",z:"23944"},
+    {n:"Knightdale",p:"919-266-6999",a:"1001 Widewaters Parkway",c:"Knightdale",s:"NC",z:"27545"},
+    {n:"Knightdale Orthodontics",p:"919-930-8550",a:"1001 Widewaters Parkway",c:"Knightdale",s:"NC",z:"27545"},
+    {n:"Leland",p:"910-663-1223",a:"1215 W Gate Dr STE 180",c:"Leland",s:"NC",z:"28451"},
+    {n:"Mebane",p:"336-270-2919",a:"1931 NC-119",c:"Mebane",s:"NC",z:"27302"},
+    {n:"Mechanicsville",p:"804-915-1440",a:"8120 Pleasant Grove Rd Suite 200",c:"Mechanicsville",s:"VA",z:"23116"},
+    {n:"Midlothian",p:"804-739-3131",a:"2273 Chartermark Drive",c:"Midlothian",s:"VA",z:"23114"},
+    {n:"Mocksville",p:"336-753-6630",a:"191 Cooper Creek Dr Suite 106",c:"Mocksville",s:"NC",z:"27028"},
+    {n:"Monkey Junction Orthodontics",p:"910-392-9101",a:"6132 Carolina Beach Rd Suite 6",c:"Wilmington",s:"NC",z:"28412"},
+    {n:"Myrtle Beach",p:"843-491-9108",a:"3470 Belle Terre Blvd",c:"Myrtle Beach",s:"SC",z:"29579"},
+    {n:"New Bern",p:"252-638-3600",a:"2048 Waterscape Way",c:"New Bern",s:"NC",z:"28562"},
+    {n:"North Myrtle Beach",p:"843-491-6021",a:"900 Hwy 17 S Suite E",c:"North Myrtle Beach",s:"SC",z:"29582"},
+    {n:"Oxford",p:"919-693-8922",a:"111 E Industry Dr",c:"Oxford",s:"NC",z:"27565"},
+    {n:"Porters Neck Orthodontics",p:"910-795-1287",a:"8201 Market St Bldg B",c:"Wilmington",s:"NC",z:"28411"},
+    {n:"Raleigh",p:"919-834-4450",a:"3614 Haworth Dr",c:"Raleigh",s:"NC",z:"27609"},
+    {n:"Raleigh Falls",p:"919-872-1000",a:"4400 Falls of Neuse Rd #202",c:"Raleigh",s:"NC",z:"27609"},
+    {n:"Richmond",p:"804-272-7040",a:"6750 Forest Hill Ave",c:"Richmond",s:"VA",z:"23225"},
+    {n:"Rock Hill",p:"803-992-8283",a:"2391 Dave Lyle Blvd, Suite 101",c:"Rock Hill",s:"SC",z:"29730"},
+    {n:"Rocky Mount - Oakwood",p:"252-977-6440",a:"105 Wayfarer Ct",c:"Rocky Mount",s:"NC",z:"27801"},
+    {n:"Rocky Mount - Sunset",p:"252-443-0048",a:"3769 Sunset Ave",c:"Rocky Mount",s:"NC",z:"27804"},
+    {n:"Selma",p:"919-965-2552",a:"1111 S Pollock St",c:"Selma",s:"NC",z:"27576"},
+    {n:"Selma Orthodontics",p:"919-561-6082",a:"1111 S Pollock St",c:"Selma",s:"NC",z:"27576"},
+    {n:"Shallotte",p:"910-754-7700",a:"301 S Willis Dr #100",c:"Shallotte",s:"NC",z:"28470"},
+    {n:"Southport",p:"910-408-4436",a:"2831 Midway Rd SE Suite 116",c:"Bolivia",s:"NC",z:"28422"},
+    {n:"Southport Crossing",p:"910-375-9579",a:"5021 Southport Crossings Way, Ste 310",c:"Southport",s:"NC",z:"28461"},
+    {n:"Suffolk",p:"757-539-1492",a:"2003 Meade Pkwy",c:"Suffolk",s:"VA",z:"23434"},
+    {n:"Wakefield",p:"919-556-6666",a:"13251 Falls of Neuse Rd #141",c:"Raleigh",s:"NC",z:"27614"},
+    {n:"Wake Forest",p:"919-556-2997",a:"12244 Wake Union Church Rd",c:"Wake Forest",s:"NC",z:"27587"},
+    {n:"Wilmington - Downtown",p:"910-254-4555",a:"124 Walnut St STE 101",c:"Wilmington",s:"NC",z:"28401"},
+    {n:"Wilmington - Monkey Junction",p:"910-392-9101",a:"6132 Carolina Beach Rd Suite 6",c:"Wilmington",s:"NC",z:"28412"},
+    {n:"Wilmington - Porters Neck",p:"910-550-1853",a:"8201 Market Street",c:"Wilmington",s:"NC",z:"28411"},
+    {n:"Wilmington - The Pointe",p:"910-218-1222",a:"1124 Gallery Pk Blvd Ste 101",c:"Wilmington",s:"NC",z:"28412"},
+    {n:"Winston-Salem",p:"336-331-3500",a:"566 S Stratford Road",c:"Winston-Salem",s:"NC",z:"27103"}
+  ];
+
+  function normZip_(z) {
+    return String(z || '').replace(/[^0-9]/g, '').slice(0, 5);
+  }
+
+  function streetNum_(a) {
+    var m = String(a || '').match(/^\s*(\d+)/);
+    return m ? m[1] : '';
+  }
+
+  var STOP = {
+    suite: 1, ste: 1, unit: 1, bldg: 1, building: 1, the: 1, of: 1, and: 1,
+    dr: 1, drive: 1, rd: 1, road: 1, st: 1, street: 1, blvd: 1, ln: 1,
+    pkwy: 1, parkway: 1, ave: 1, avenue: 1
+  };
+
+  function normWords_(s) {
+    return String(s || '')
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, ' ')
+      .split(' ')
+      .filter(function (w) { return w.length > 1 && !STOP[w]; });
+  }
+
+  function jaccard_(aWords, bWords) {
+    var aSet = {}, bSet = {}, union = {}, inter = 0;
+    aWords.forEach(function (w) { aSet[w] = true; });
+    bWords.forEach(function (w) { bSet[w] = true; });
+    Object.keys(aSet).forEach(function (w) { union[w] = true; if (bSet[w]) inter++; });
+    Object.keys(bSet).forEach(function (w) { union[w] = true; });
+    var size = Object.keys(union).length;
+    return size ? inter / size : 0;
+  }
+
+  var offices = readOfficeRecords_();
+  var results = [];
+
+  offices.forEach(function (office) {
+    var oZip = normZip_(office.zipCode);
+    var oNum = streetNum_(office.streetAddress);
+    var candidates = CSV_DATA.filter(function (c) { return normZip_(c.z) === oZip; });
+    var pick = null, method = '';
+
+    if (candidates.length === 1) {
+      pick = candidates[0];
+      method = 'zip-unique';
+    } else if (candidates.length > 1) {
+      var byNum = candidates.filter(function (c) { return oNum && streetNum_(c.a) === oNum; });
+      var pool = byNum.length ? byNum : candidates;
+      var nWords = normWords_(office.nickname);
+      var best = null, bestScore = -1;
+      pool.forEach(function (c) {
+        var score = jaccard_(nWords, normWords_(c.n));
+        if (score > bestScore) { bestScore = score; best = c; }
+      });
+      pick = best;
+      method = (byNum.length ? 'zip+streetnum+nickname(' : 'zip+nickname(') + bestScore.toFixed(2) + ')';
+    } else {
+      var nWords3 = normWords_(office.nickname + ' ' + office.streetAddress);
+      var best3 = null, bestScore3 = -1;
+      CSV_DATA.forEach(function (c) {
+        var score = jaccard_(nWords3, normWords_(c.n + ' ' + c.a));
+        if (score > bestScore3) { bestScore3 = score; best3 = c; }
+      });
+      if (bestScore3 > 0.4) { pick = best3; method = 'fuzzy(' + bestScore3.toFixed(2) + ')'; }
+    }
+
+    results.push({
+      row: office.rowNumber,
+      nickname: office.nickname,
+      zip: office.zipCode,
+      addr: office.streetAddress,
+      matchedName: pick ? pick.n : null,
+      phone: pick ? pick.p : null,
+      method: method || 'NO MATCH'
+    });
+  });
+
+  var lines = results.map(function (r) {
+    return r.row + '|' + r.nickname + '|' + r.zip + '->' + (r.phone || '???') + '|' + (r.matchedName || '-') + '|' + r.method;
+  });
+  var chunkSize = 14;
+  for (var i = 0; i < lines.length; i += chunkSize) {
+    Logger.log(lines.slice(i, i + chunkSize).join('\n'));
+  }
+  Logger.log('MATCHED ' + results.filter(function (r) { return r.phone; }).length + ' of ' + results.length + '. DRYRUN=' + dryRun);
+
+  if (!dryRun) {
+    var spreadsheet = SpreadsheetApp.openById(HUB_CONFIG.officeSpreadsheetId);
+    var sheet = spreadsheet.getSheetByName(HUB_CONFIG.officeSheetName);
+    sheet.getRange(1, 6).setValue('Phone');
+    results.forEach(function (r) {
+      if (r.phone) { sheet.getRange(r.row, 6).setValue(r.phone); }
+    });
+    Logger.log('WROTE phone numbers to column F.');
+  }
+}
