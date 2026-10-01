@@ -347,14 +347,15 @@ h2 {
 
 .office-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(680px, 1fr));
+  grid-template-columns: repeat(2, 1fr);
   gap: 16px;
 }
 
 .office-card {
   display: grid;
-  grid-template-columns: minmax(170px, 1fr) minmax(170px, 1.05fr) minmax(150px, 0.95fr) auto;
-  gap: 18px;
+  grid-template-columns: 1fr 1fr;
+  column-gap: 18px;
+  row-gap: 14px;
   align-items: start;
   min-height: 118px;
   padding: 19px 21px;
@@ -421,6 +422,7 @@ h2 {
 }
 
 .office-action {
+  grid-column: 1 / -1;
   display: flex;
   align-items: center;
 }
@@ -731,15 +733,6 @@ footer > span:nth-child(2) {
 
   .office-grid {
     grid-template-columns: 1fr;
-  }
-
-  .office-card {
-    grid-template-columns: 1fr 1fr;
-    row-gap: 14px;
-  }
-
-  .office-action {
-    grid-column: 1 / -1;
   }
 
   .filter-row {
