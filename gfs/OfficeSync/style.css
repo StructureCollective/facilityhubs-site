@@ -538,9 +538,9 @@ h2 {
   z-index: 15;
   top: 100%;
   left: 0;
-  min-width: 270px;
+  width: 100%;
   margin-top: 8px;
-  padding: 12px 14px;
+  padding: 10px 12px;
   border: 1px solid var(--line);
   border-radius: 10px;
   background: #ffffff;
@@ -554,17 +554,20 @@ h2 {
 .hours-table {
   width: 100%;
   border-collapse: collapse;
-  font-size: 13px;
+  font-size: 12.5px;
+  table-layout: fixed;
 }
 
 .hours-table td {
-  padding: 5px 0;
+  padding: 4px 0;
   color: var(--ink);
-  white-space: nowrap;
+  white-space: normal;
+  word-break: break-word;
 }
 
 .hours-table td:first-child {
-  padding-right: 20px;
+  width: 46%;
+  padding-right: 8px;
   color: var(--muted);
   font-weight: 600;
 }
