@@ -451,24 +451,173 @@ h2 {
 .office-pill.state-wv { background: linear-gradient(135deg, #6b7280, #9099a8); }
 .office-pill.state-default { background: linear-gradient(135deg, #5556ef, #714af4); }
 
-/* MAP BUTTON */
+/* PHONE LINK */
 
-.map-button {
+.phone-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--navy);
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.phone-link:hover {
+  text-decoration: underline;
+}
+
+.phone-link .phone-icon svg {
+  width: 15px;
+  height: 15px;
+}
+
+/* OFFICE HOURS DROPDOWN (Google Business style) */
+
+.hours-field {
+  position: relative;
+  margin-top: 10px;
+}
+
+.hours-toggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.hours-toggle .hours-label {
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+}
+
+.hours-toggle .hours-status {
+  flex: 1;
+  min-width: 0;
+  color: var(--ink);
+  font-size: 13px;
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.hours-status.is-open {
+  color: #167a46;
+}
+
+.hours-status.is-closed {
+  color: #b23b3b;
+}
+
+.hours-toggle .chevron {
+  flex-shrink: 0;
+  color: var(--muted);
+  transition: transform 0.15s ease;
+}
+
+.hours-toggle .chevron svg {
+  width: 16px;
+  height: 16px;
+}
+
+.hours-toggle[aria-expanded="true"] .chevron {
+  transform: rotate(180deg);
+}
+
+.hours-panel {
+  position: absolute;
+  z-index: 15;
+  top: 100%;
+  left: 0;
+  min-width: 270px;
+  margin-top: 8px;
+  padding: 12px 14px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: #ffffff;
+  box-shadow: var(--shadow-lg);
+}
+
+.hours-panel[hidden] {
+  display: none;
+}
+
+.hours-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.hours-table td {
+  padding: 5px 0;
+  color: var(--ink);
+  white-space: nowrap;
+}
+
+.hours-table td:first-child {
+  padding-right: 20px;
+  color: var(--muted);
+  font-weight: 600;
+}
+
+.hours-table td:last-child {
+  text-align: right;
+}
+
+.hours-table tr.is-today td {
+  color: var(--navy);
+  font-weight: 700;
+}
+
+.hours-table tr.is-extra td {
+  color: var(--gold);
+  font-style: italic;
+}
+
+.hours-note {
+  margin: 8px 0 0;
+  color: var(--muted);
+  font-size: 12px;
+  font-style: italic;
+}
+
+/* COPY ADDRESS BUTTON */
+
+.copy-button {
   display: inline-flex;
   align-items: center;
   gap: 7px;
   padding: 8px 14px;
+  border: 0;
   border-radius: 8px;
   background: var(--navy);
   color: #ffffff;
   font-size: 13px;
   font-weight: 700;
-  text-decoration: none;
   white-space: nowrap;
+  cursor: pointer;
 }
 
-.map-button:hover {
+.copy-button:hover {
   filter: brightness(1.12);
+}
+
+.copy-button.is-copied {
+  background: #167a46;
+}
+
+.copy-button .copy-icon svg {
+  width: 15px;
+  height: 15px;
 }
 
 /* EMPTY AND LOADING STATES */
