@@ -386,7 +386,11 @@ async function lateFeeInfo(env, tenant) {
   const cutoff = Date.UTC(year, month - 1, tenant.late_fee_after_day);
   const today = easternParts();
   const todayUtc = Date.UTC(today.year, today.month - 1, today.day);
-  const applies = !paid && todayUtc > cutoff;
+  // An admin can waive the late fee for one billing cycle only by setting
+  // tenants.late_fee_waived_period to that cycle's 'YYYY-MM' label --
+  // it stops matching on its own once the next cycle starts.
+  const waived = tenant.late_fee_waived_period === currentPeriodLabel(tenant.due_day);
+  const applies = !paid && !waived && todayUtc > cutoff;
   return {
     lateFeeCents: tenant.late_fee_cents || 0,
     lateFeeAfterDay: tenant.late_fee_after_day,

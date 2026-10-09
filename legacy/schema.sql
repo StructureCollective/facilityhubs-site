@@ -12,6 +12,10 @@ CREATE TABLE IF NOT EXISTS tenants (
   due_day INTEGER NOT NULL CHECK (due_day BETWEEN 1 AND 28),
   late_fee_cents INTEGER NOT NULL DEFAULT 0,
   late_fee_after_day INTEGER,
+  -- 'YYYY-MM' of a single billing cycle whose late fee is waived (see
+  -- lateFeeInfo in src/index.js); NULL = no waiver. Added later with:
+  -- ALTER TABLE tenants ADD COLUMN late_fee_waived_period TEXT;
+  late_fee_waived_period TEXT,
   active INTEGER NOT NULL DEFAULT 1,
   created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
