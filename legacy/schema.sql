@@ -80,6 +80,44 @@ CREATE TABLE IF NOT EXISTS maintenance_requests (
 
 CREATE INDEX IF NOT EXISTS idx_maintenance_tenant ON maintenance_requests(tenant_id);
 
+-- Statuses used by maintenance_requests.status: 'open', 'scheduled',
+-- 'in_progress', 'closed' (see MAINTENANCE_STATUSES in src/index.js).
+
+-- Timeline on a maintenance request's Admin detail view: kind='note' is
+-- an admin-written note (internal, never shown to the tenant);
+-- kind='event' is a line the app writes itself -- status changes,
+-- appointment emails sent, a tenant approving an appointment.
+CREATE TABLE IF NOT EXISTS maintenance_notes (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  request_id INTEGER NOT NULL REFERENCES maintenance_requests(id),
+  kind TEXT NOT NULL DEFAULT 'note' CHECK (kind IN ('note', 'event')),
+  body TEXT NOT NULL,
+  author TEXT,
+  created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
+CREATE INDEX IF NOT EXISTS idx_maintenance_notes_request ON maintenance_notes(request_id);
+
+-- Service appointments proposed to a tenant by email. `token` is the
+-- secret in the email's "Approve Appointment" link. Sending a new
+-- proposal for the same request marks any still-pending one 'superseded'.
+CREATE TABLE IF NOT EXISTS maintenance_appointments (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  request_id INTEGER NOT NULL REFERENCES maintenance_requests(id),
+  appointment_date TEXT NOT NULL,   -- YYYY-MM-DD
+  start_time TEXT NOT NULL,         -- HH:MM, 24-hour, property local time
+  end_time TEXT,                    -- HH:MM, optional
+  message TEXT,
+  token TEXT UNIQUE NOT NULL,
+  status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'approved', 'superseded')),
+  sent_to TEXT NOT NULL,
+  sent_by TEXT,
+  created_at TEXT NOT NULL DEFAULT (datetime('now')),
+  responded_at TEXT
+);
+
+CREATE INDEX IF NOT EXISTS idx_maintenance_appts_request ON maintenance_appointments(request_id);
+
 -- One-time email magic-link tokens. `subject` is a tenant's numeric id
 -- (as text) when subject_type='tenant', or an admin's email when
 -- subject_type='admin' (admins have no numeric id). used_at prevents a

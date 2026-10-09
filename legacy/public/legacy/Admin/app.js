@@ -9,6 +9,40 @@
   let currentTenantId = null;
   let currentTenantData = null;
   let allMaintenance = [];
+  let currentRequestId = null;
+  let currentRequestData = null;
+  // Where "back" from a request's detail view goes: the all-requests
+  // list, or the tenant detail page it was opened from.
+  let requestReturnTo = 'list';
+
+  var STATUS_LABELS = { open: 'Open', scheduled: 'Scheduled', in_progress: 'In progress', closed: 'Closed' };
+  function statusText(s) { return STATUS_LABELS[s] || s; }
+  function statusPill(s) {
+    return '<span class="pill ' + esc(s) + '">' + esc(statusText(s)) + '</span>';
+  }
+
+  // D1's datetime('now') values are UTC 'YYYY-MM-DD HH:MM:SS' -- shown
+  // in the property's own time zone.
+  function fmtDateTime(sqlUtc) {
+    if (!sqlUtc) return '\u2014';
+    return new Date(sqlUtc.replace(' ', 'T') + 'Z').toLocaleString('en-US', {
+      month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit',
+      timeZone: 'America/New_York',
+    });
+  }
+
+  function fmtTime(hhmm) {
+    if (!hhmm) return '';
+    var parts = hhmm.split(':');
+    var h = parseInt(parts[0], 10);
+    return (h % 12 === 0 ? 12 : h % 12) + ':' + parts[1] + ' ' + (h >= 12 ? 'PM' : 'AM');
+  }
+
+  function fmtApptDate(iso) {
+    return new Date(iso + 'T00:00:00Z').toLocaleDateString('en-US', {
+      weekday: 'short', month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC',
+    });
+  }
 
   function money(cents) {
     return (cents / 100).toLocaleString('en-US', { style: 'currency', currency: 'USD' });
@@ -69,6 +103,12 @@
     $('editProfileBtn').addEventListener('click', openProfileEditor);
     $('saveProfileBtn').addEventListener('click', saveProfileEdit);
     $('cancelProfileBtn').addEventListener('click', closeProfileEditor);
+    $('requestBackLink').addEventListener('click', closeRequest);
+    $('saveStatusBtn').addEventListener('click', saveRequestStatus);
+    $('addNoteBtn').addEventListener('click', addRequestNote);
+    $('openApptBtn').addEventListener('click', openApptForm);
+    $('cancelApptBtn').addEventListener('click', closeApptForm);
+    $('sendApptBtn').addEventListener('click', sendAppointment);
     loadTenants();
   }
 
@@ -128,6 +168,7 @@
   }
 
   function showTenantsView() {
+    $('requestDetail').className = '';
     $('navTenants').className = 'active';
     $('navMaintenance').className = '';
     $('maintenanceList').className = '';
@@ -136,6 +177,7 @@
   }
 
   function showMaintenanceView() {
+    $('requestDetail').className = '';
     $('navTenants').className = '';
     $('navMaintenance').className = 'active';
     document.getElementById('tenantList').style.display = 'none';
@@ -173,11 +215,14 @@
       return;
     }
     $('allMaintenanceBody').innerHTML = filtered.map(function (r) {
-      return '<tr><td>' + esc(r.full_name) + '</td><td>' + esc(r.unit_label || '—') + '</td><td>' +
+      return '<tr class="row-click" data-req-id="' + r.id + '"><td>' + esc(r.full_name) + '</td><td>' + esc(r.unit_label || '—') + '</td><td>' +
         esc(r.description) + '</td><td>' + esc(r.issue_type || '—') + '</td><td>' +
-        fmtDate(r.issue_started_on) + '</td><td><span class="pill ' + esc(r.status) + '">' + esc(r.status) +
-        '</span></td><td>' + fmtDate(r.created_at) + '</td></tr>';
+        fmtDate(r.issue_started_on) + '</td><td>' + statusPill(r.status) +
+        '</td><td>' + fmtDate(r.created_at) + '</td></tr>';
     }).join('');
+    document.querySelectorAll('#allMaintenanceBody tr[data-req-id]').forEach(function (row) {
+      row.addEventListener('click', function () { openRequest(row.dataset.reqId, 'list'); });
+    });
   }
 
   function loadTenants() {
@@ -220,6 +265,7 @@
     currentTenantData = null;
     closeRentEditor();
     closeProfileEditor();
+    $('requestDetail').className = '';
     $('maintenanceList').className = '';
     document.getElementById('tenantList').style.display = 'none';
     $('tenantDetail').className = 'open';
@@ -586,10 +632,222 @@
       return;
     }
     $('maintenanceBody').innerHTML = requests.map(function (r) {
-      return '<tr><td>' + esc(r.description) + '</td><td>' + esc(r.issue_type || '—') + '</td><td>' +
-        fmtDate(r.issue_started_on) + '</td><td><span class="pill ' + esc(r.status) + '">' +
-        esc(r.status) + '</span></td><td>' + fmtDate(r.created_at) + '</td></tr>';
+      return '<tr class="row-click" data-req-id="' + r.id + '"><td>' + esc(r.description) + '</td><td>' + esc(r.issue_type || '—') + '</td><td>' +
+        fmtDate(r.issue_started_on) + '</td><td>' + statusPill(r.status) +
+        '</td><td>' + fmtDate(r.created_at) + '</td></tr>';
     }).join('');
+    document.querySelectorAll('#maintenanceBody tr[data-req-id]').forEach(function (row) {
+      row.addEventListener('click', function () { openRequest(row.dataset.reqId, 'tenant'); });
+    });
+  }
+
+
+  // ---- Maintenance request detail ----
+
+  function openRequest(id, returnTo) {
+    currentRequestId = id;
+    currentRequestData = null;
+    requestReturnTo = returnTo;
+    closeApptForm();
+    ['noteMsg', 'statusMsg', 'apptMsg'].forEach(function (k) { $(k).hidden = true; });
+    $('reqNotice').hidden = true;
+    $('noteInput').value = '';
+    $('requestBackLink').innerHTML = returnTo === 'tenant' ? '&larr; Back to tenant' : '&larr; Maintenance requests';
+    document.getElementById('tenantList').style.display = 'none';
+    $('maintenanceList').className = '';
+    $('tenantDetail').className = '';
+    $('requestDetail').className = 'open';
+    $('reqTitle').textContent = 'Loading…';
+    $('reqSub').textContent = '';
+    window.scrollTo(0, 0);
+    loadRequest();
+  }
+
+  function closeRequest() {
+    $('requestDetail').className = '';
+    if (requestReturnTo === 'tenant' && currentTenantId) {
+      $('tenantDetail').className = 'open';
+      showTab('maintenance');
+    } else {
+      $('maintenanceList').className = 'open';
+      loadAllMaintenance();
+    }
+  }
+
+  function loadRequest() {
+    return fetch('/legacy/api/maintenance/' + currentRequestId)
+      .then(function (r) { return r.json().then(function (d) { return { ok: r.ok, data: d }; }); })
+      .then(function (res) {
+        if (!res.ok) {
+          $('reqNotice').textContent = res.data.error || 'Could not load this request.';
+          $('reqNotice').hidden = false;
+          return;
+        }
+        currentRequestData = res.data;
+        renderRequest();
+      })
+      .catch(function () {
+        $('reqNotice').textContent = 'Could not load this request.';
+        $('reqNotice').hidden = false;
+      });
+  }
+
+  function renderRequest() {
+    var d = currentRequestData;
+    var req = d.request;
+    var t = d.tenant;
+    $('reqTitle').textContent = (req.issue_type || 'Maintenance') + ' — ' + t.full_name;
+    $('reqSub').innerHTML = statusPill(req.status) + ' &nbsp;' + esc(t.unit_label || '');
+    $('reqDescription').textContent = req.description;
+    $('reqType').textContent = req.issue_type || '—';
+    $('reqStarted').textContent = fmtDate(req.issue_started_on);
+    $('reqSubmitted').textContent = fmtDateTime(req.created_at);
+    $('reqUpdated').textContent = fmtDateTime(req.updated_at || req.created_at);
+    $('reqStatusSelect').value = req.status;
+
+    $('reqTenantName').textContent = t.full_name;
+    $('reqTenantUnit').textContent = t.unit_label || '';
+    $('reqTenantEmail').innerHTML = t.email ? '<a href="mailto:' + esc(t.email) + '">' + esc(t.email) + '</a>' : '';
+    $('reqTenantPhone').innerHTML = t.phone ? '<a href="tel:' + esc(t.phone) + '">' + esc(t.phone) + '</a>' : '';
+
+    var appts = d.appointments || [];
+    if (!appts.length) {
+      $('apptList').innerHTML = '<li style="color:var(--muted);">No appointment scheduled yet.</li>';
+    } else {
+      $('apptList').innerHTML = appts.map(function (a) {
+        var pill = a.status === 'approved' ? '<span class="pill succeeded">Approved</span>'
+          : a.status === 'pending' ? '<span class="pill pending">Awaiting approval</span>'
+          : '<span class="pill superseded">Replaced</span>';
+        var when = fmtApptDate(a.appointment_date) + ' · ' + fmtTime(a.start_time) +
+          (a.end_time ? ' – ' + fmtTime(a.end_time) : '');
+        var sub = 'Sent to ' + esc(a.sent_to) + ' on ' + fmtDateTime(a.created_at) +
+          (a.status === 'approved' && a.responded_at ? '<br>Approved ' + fmtDateTime(a.responded_at) : '');
+        return '<li' + (a.status === 'superseded' ? ' style="opacity:.6;"' : '') + '><div class="appt-when"><span>' +
+          esc(when) + '</span>' + pill + '</div><div class="appt-sub">' + sub + '</div></li>';
+      }).join('');
+    }
+    $('openApptBtn').textContent = appts.length ? 'Send a New Time' : 'Schedule Appointment';
+
+    var notes = d.notes || [];
+    if (!notes.length) {
+      $('timeline').innerHTML = '<li style="color:var(--muted);border-top:none;">No notes yet.</li>';
+    } else {
+      $('timeline').innerHTML = notes.map(function (n) {
+        var who = n.kind === 'note' ? (n.author || 'Admin') : (n.author ? n.author : 'System');
+        return '<li class="' + (n.kind === 'event' ? 'event' : 'note') + '"><div class="tl-meta">' +
+          esc(fmtDateTime(n.created_at)) + ' · ' + esc(who) + '</div><div class="tl-body">' + esc(n.body) + '</div></li>';
+      }).join('');
+    }
+  }
+
+  function showMsg(id, text, good) {
+    $(id).textContent = text;
+    $(id).className = 'req-msg ' + (good ? 'good' : 'error');
+    $(id).hidden = false;
+  }
+
+  function postJson(url, body) {
+    return fetch(url, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify(body),
+    }).then(function (r) { return r.json().then(function (d) { return { ok: r.ok, data: d }; }); });
+  }
+
+  function saveRequestStatus() {
+    var status = $('reqStatusSelect').value;
+    if (currentRequestData && status === currentRequestData.request.status) {
+      showMsg('statusMsg', 'Status is already ' + statusText(status) + '.', true);
+      return;
+    }
+    $('saveStatusBtn').disabled = true;
+    postJson('/legacy/api/maintenance/' + currentRequestId + '/status', { status: status })
+      .then(function (res) {
+        $('saveStatusBtn').disabled = false;
+        if (!res.ok) { showMsg('statusMsg', res.data.error || 'Could not update status.'); return; }
+        showMsg('statusMsg', 'Status updated to ' + statusText(status) + '.', true);
+        allMaintenance = [];
+        loadRequest();
+      })
+      .catch(function () {
+        $('saveStatusBtn').disabled = false;
+        showMsg('statusMsg', 'Something went wrong. Please try again.');
+      });
+  }
+
+  function addRequestNote() {
+    var text = $('noteInput').value.trim();
+    if (!text) { showMsg('noteMsg', 'Type a note first.'); return; }
+    $('addNoteBtn').disabled = true;
+    $('noteMsg').hidden = true;
+    postJson('/legacy/api/maintenance/' + currentRequestId + '/notes', { body: text })
+      .then(function (res) {
+        $('addNoteBtn').disabled = false;
+        if (!res.ok) { showMsg('noteMsg', res.data.error || 'Could not save note.'); return; }
+        $('noteInput').value = '';
+        loadRequest();
+      })
+      .catch(function () {
+        $('addNoteBtn').disabled = false;
+        showMsg('noteMsg', 'Something went wrong. Please try again.');
+      });
+  }
+
+  function openApptForm() {
+    var tomorrow = new Date(Date.now() + 86400000);
+    var iso = tomorrow.getFullYear() + '-' + String(tomorrow.getMonth() + 1).padStart(2, '0') + '-' +
+      String(tomorrow.getDate()).padStart(2, '0');
+    $('apptDate').value = iso;
+    $('apptDate').min = new Date().toISOString().slice(0, 10);
+    $('apptStart').value = '09:00';
+    $('apptEnd').value = '12:00';
+    $('apptMessage').value = '';
+    $('apptEmail').value = (currentRequestData && currentRequestData.tenant.email) || '';
+    $('apptMsg').hidden = true;
+    $('openApptBtn').hidden = true;
+    $('apptForm').hidden = false;
+  }
+
+  function closeApptForm() {
+    $('apptForm').hidden = true;
+    $('openApptBtn').hidden = false;
+  }
+
+  function sendAppointment() {
+    var date = $('apptDate').value;
+    var start = $('apptStart').value;
+    var end = $('apptEnd').value;
+    var email = $('apptEmail').value.trim().toLowerCase();
+    if (!date) { showMsg('apptMsg', 'Choose a date.'); return; }
+    if (!start) { showMsg('apptMsg', 'Choose a start time.'); return; }
+    if (end && end <= start) { showMsg('apptMsg', 'End time must be after the start time.'); return; }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { showMsg('apptMsg', 'Enter a valid email address.'); return; }
+
+    var when = fmtApptDate(date) + ', ' + fmtTime(start) + (end ? ' – ' + fmtTime(end) : '');
+    if (!window.confirm('Send this appointment to ' + email + '?\n\n' + when)) return;
+
+    $('sendApptBtn').disabled = true;
+    $('apptMsg').hidden = true;
+    postJson('/legacy/api/maintenance/' + currentRequestId + '/appointments', {
+      date: date, startTime: start, endTime: end || null,
+      message: $('apptMessage').value.trim() || null, email: email,
+    })
+      .then(function (res) {
+        $('sendApptBtn').disabled = false;
+        if (!res.ok) {
+          showMsg('apptMsg', res.data.error || 'Could not send the appointment.');
+          loadRequest();
+          return;
+        }
+        closeApptForm();
+        loadRequest().then(function () {
+          showMsg('apptMsg', 'Sent to ' + res.data.sentTo + '.', true);
+        });
+      })
+      .catch(function () {
+        $('sendApptBtn').disabled = false;
+        showMsg('apptMsg', 'Something went wrong. Please try again.');
+      });
   }
 
   function showList() {

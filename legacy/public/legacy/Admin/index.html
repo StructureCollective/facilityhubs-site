@@ -86,6 +86,43 @@
     font-weight: 700; cursor: pointer; text-decoration: underline; padding: 0;
   }
   .fee-remove:hover { color: #9a2f24; }
+
+  /* Maintenance request detail */
+  #requestDetail { display: none; }
+  #requestDetail.open { display: block; }
+  .req-grid { display: grid; grid-template-columns: minmax(0, 1fr) 340px; gap: 20px; align-items: start; }
+  @media (max-width: 900px) { .req-grid { grid-template-columns: 1fr; } }
+  .req-col { display: flex; flex-direction: column; gap: 20px; min-width: 0; }
+  .req-card { background: #fff; border: 1px solid var(--line-strong); border-radius: 12px; padding: 20px 22px; margin: 0; }
+  .req-card h3 { font-family: var(--font-head); font-size: 1.05rem; margin: 0 0 12px; color: var(--navy); }
+  .req-desc { margin: 0 0 16px; white-space: pre-wrap; line-height: 1.55; }
+  .req-meta { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px; margin: 0; }
+  .req-meta dt { font-size: .72rem; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: .03em; }
+  .req-meta dd { margin: 2px 0 0; font-size: .9rem; }
+  .req-tenant p { margin: 0 0 6px; font-size: .9rem; overflow-wrap: anywhere; }
+  .req-tenant a { color: var(--navy); }
+  .req-status-row { display: flex; gap: 10px; }
+  .req-status-row select { flex: 1; }
+  .req-msg { font-size: .82rem; margin: 10px 0 0; }
+  .req-msg.good { color: var(--good); }
+  .req-msg.error { color: var(--bad); }
+  .appt-list { list-style: none; padding: 0; margin: 0 0 14px; }
+  .appt-list li { padding: 10px 0; border-bottom: 1px solid var(--line); font-size: .88rem; }
+  .appt-list li:last-child { border-bottom: none; }
+  .appt-when { font-weight: 700; display: flex; justify-content: space-between; gap: 8px; align-items: flex-start; }
+  .appt-sub { color: var(--muted); font-size: .78rem; margin-top: 3px; overflow-wrap: anywhere; }
+  .appt-form .field { margin-bottom: 12px; }
+  .appt-form textarea { min-height: 80px; }
+  .appt-times { display: flex; gap: 10px; }
+  .appt-times .field { flex: 1; }
+  .note-form textarea { min-height: 90px; margin-bottom: 10px; }
+  .timeline { list-style: none; padding: 0; margin: 18px 0 0; }
+  .timeline li { padding: 12px 0; border-top: 1px solid var(--line); font-size: .9rem; }
+  .timeline .tl-meta { color: var(--muted); font-size: .76rem; margin-bottom: 4px; }
+  .timeline .tl-body { white-space: pre-wrap; overflow-wrap: anywhere; }
+  .timeline li.event .tl-body { color: var(--muted); font-style: italic; font-size: .84rem; }
+  .timeline li.event .tl-body::before { content: ''; display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: var(--gold-strong); margin-right: 8px; vertical-align: middle; }
+  .btn.outline { background: #fff; color: var(--navy); border: 1.5px solid var(--line-strong); }
 </style>
 </head>
 <body>
@@ -131,6 +168,8 @@
 <select id="maintenanceStatusFilter">
 <option value="">All statuses</option>
 <option value="open">Open</option>
+<option value="scheduled">Scheduled</option>
+<option value="in_progress">In progress</option>
 <option value="closed">Closed</option>
 </select>
 </div>
@@ -138,6 +177,81 @@
 <thead><tr><th>Tenant</th><th>Unit</th><th>Description</th><th>Type</th><th>Started</th><th>Status</th><th>Submitted</th></tr></thead>
 <tbody id="allMaintenanceBody"><tr><td colspan="7">Loading&hellip;</td></tr></tbody>
 </table>
+</div>
+
+<div id="requestDetail">
+<span class="backlink" id="requestBackLink">&larr; Maintenance requests</span>
+<header class="page-header">
+<h1 id="reqTitle">&nbsp;</h1>
+<p id="reqSub"></p>
+</header>
+<div id="reqNotice" class="notice error" hidden></div>
+<div class="req-grid">
+<div class="req-col">
+<section class="req-card">
+<h3>Request</h3>
+<p class="req-desc" id="reqDescription"></p>
+<dl class="req-meta">
+<div><dt>Type</dt><dd id="reqType"></dd></div>
+<div><dt>Issue started</dt><dd id="reqStarted"></dd></div>
+<div><dt>Submitted</dt><dd id="reqSubmitted"></dd></div>
+<div><dt>Last updated</dt><dd id="reqUpdated"></dd></div>
+</dl>
+</section>
+<section class="req-card">
+<h3>Notes &amp; activity</h3>
+<div class="note-form">
+<textarea id="noteInput" maxlength="2000" placeholder="Add a note -- vendor quotes, parts ordered, what the tech found&hellip;"></textarea>
+<button class="btn gold" id="addNoteBtn" type="button">Add Note</button>
+<p class="req-msg" id="noteMsg" hidden></p>
+</div>
+<p class="rent-edit-note" style="margin-top:10px;">Notes are internal -- tenants never see them.</p>
+<ul class="timeline" id="timeline"></ul>
+</section>
+</div>
+<div class="req-col">
+<section class="req-card">
+<h3>Status</h3>
+<div class="req-status-row">
+<select id="reqStatusSelect">
+<option value="open">Open</option>
+<option value="scheduled">Scheduled</option>
+<option value="in_progress">In progress</option>
+<option value="closed">Closed</option>
+</select>
+<button class="btn" id="saveStatusBtn" type="button">Save</button>
+</div>
+<p class="req-msg" id="statusMsg" hidden></p>
+</section>
+<section class="req-card req-tenant">
+<h3>Tenant</h3>
+<p><strong id="reqTenantName"></strong></p>
+<p id="reqTenantUnit"></p>
+<p id="reqTenantEmail"></p>
+<p id="reqTenantPhone"></p>
+</section>
+<section class="req-card">
+<h3>Service appointment</h3>
+<ul class="appt-list" id="apptList"></ul>
+<button class="btn" id="openApptBtn" type="button">Schedule Appointment</button>
+<div class="appt-form" id="apptForm" hidden>
+<div class="field"><label>Date</label><input type="date" id="apptDate"></div>
+<div class="appt-times">
+<div class="field"><label>Start time</label><input type="time" id="apptStart" step="900"></div>
+<div class="field"><label>End time</label><input type="time" id="apptEnd" step="900"></div>
+</div>
+<div class="field"><label>Message (optional)</label><textarea id="apptMessage" maxlength="1000" placeholder="e.g. Our tech will need access to the utility closet."></textarea></div>
+<div class="field"><label>Send to</label><input type="text" id="apptEmail"></div>
+<p class="rent-edit-note">The tenant gets an email with an Approve Appointment button. Sending a new time replaces any earlier one that hasn't been approved yet.</p>
+<div class="rent-edit-actions">
+<button class="btn gold" id="sendApptBtn" type="button">Send to Tenant</button>
+<button class="btn outline" id="cancelApptBtn" type="button">Cancel</button>
+</div>
+</div>
+<p class="req-msg" id="apptMsg" hidden></p>
+</section>
+</div>
+</div>
 </div>
 
 <div id="tenantDetail">

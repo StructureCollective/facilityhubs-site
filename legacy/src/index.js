@@ -55,7 +55,9 @@ function escapeHtml(v) {
 // that's set, this quietly no-ops rather than breaking the payment or
 // maintenance-request flow that triggered it.
 export async function sendEmail(env, { to, subject, html, replyTo }) {
-  if (!env.RESEND_API_KEY) return;
+  // Returns true once Resend accepts the email, false otherwise -- most
+  // callers ignore it, but the admin appointment email reports it back.
+  if (!env.RESEND_API_KEY) return false;
   try {
     const res = await fetch('https://api.resend.com/emails', {
       method: 'POST',
@@ -73,9 +75,12 @@ export async function sendEmail(env, { to, subject, html, replyTo }) {
     });
     if (!res.ok) {
       console.error('Resend send failed:', res.status, await res.text());
+      return false;
     }
+    return true;
   } catch (err) {
     console.error('Resend send threw:', err);
+    return false;
   }
 }
 
@@ -189,6 +194,90 @@ export function paymentReceivedAdminEmailBody(paid) {
 <p><strong>Amount:</strong> $${(paid.amount_cents / 100).toFixed(2)}<br>
 <strong>Period:</strong> ${escapeHtml(paid.period_label || '')}</p>
 ${emailButton('https://facilityhubs.com/legacy/Admin/', 'View in Admin Dashboard')}`);
+}
+
+// ---------------------------------------------------------------------
+// Maintenance appointments -- an admin proposes a service date/time from
+// a request's Admin detail view; the tenant gets appointmentRequestEmailBody()
+// with an "Approve Appointment" button, which opens a confirmation page
+// (see handleAppointmentPage below). Approving there sends the tenant
+// appointmentConfirmedEmailBody() and the office appointmentApprovedAdminEmailBody().
+// ---------------------------------------------------------------------
+
+// 'YYYY-MM-DD' -> 'Friday, October 16, 2026'
+export function formatApptDate(isoDate) {
+  const [y, m, d] = String(isoDate).split('-').map(Number);
+  return new Date(Date.UTC(y, m - 1, d)).toLocaleDateString('en-US', {
+    weekday: 'long', month: 'long', day: 'numeric', year: 'numeric', timeZone: 'UTC',
+  });
+}
+
+// 'HH:MM' (24h) -> '9:00 AM'
+function formatApptTime(hhmm) {
+  if (!hhmm) return '';
+  const [h, min] = String(hhmm).split(':').map(Number);
+  const suffix = h >= 12 ? 'PM' : 'AM';
+  const h12 = h % 12 === 0 ? 12 : h % 12;
+  return `${h12}:${String(min).padStart(2, '0')} ${suffix}`;
+}
+
+export function formatApptWindow(appt) {
+  const start = formatApptTime(appt.start_time);
+  return appt.end_time ? `${start} &ndash; ${formatApptTime(appt.end_time)}` : start;
+}
+
+// The shared grey details box used by all three appointment emails and
+// the confirmation page.
+function appointmentDetailsBox({ request, appt }) {
+  return `<div style="background:#f6f7fa;border:1px solid #d7dbe3;border-radius:10px;padding:16px 18px;margin:18px 0;">
+<p style="margin:0 0 6px;"><strong>Request:</strong> ${escapeHtml(request.issue_type || 'Maintenance')}</p>
+<p style="margin:0 0 6px;color:#5b6478;font-size:14px;">${escapeHtml(request.description || '')}</p>
+<p style="margin:12px 0 6px;"><strong>Date:</strong> ${formatApptDate(appt.appointment_date)}</p>
+<p style="margin:0;"><strong>Time:</strong> ${formatApptWindow(appt)}</p>
+</div>`;
+}
+
+export function appointmentRequestEmailBody({ tenant, request, appt, confirmUrl }) {
+  const firstName = tenant.full_name ? tenant.full_name.split(' ')[0] : 'there';
+  return emailShell(`<p>Hi ${escapeHtml(firstName)},</p>
+<p>We'd like to schedule service for your maintenance request${tenant.unit_label ? ` at ${escapeHtml(tenant.unit_label)}` : ''}.</p>
+${appointmentDetailsBox({ request, appt })}
+${appt.message ? `<p>${escapeHtml(appt.message).replace(/\n/g, '<br>')}</p>` : ''}
+<p>Please confirm this appointment works for you:</p>
+${emailButton(confirmUrl, 'Approve Appointment')}
+<p style="color:#5b6478;font-size:13px;">If this time doesn't work, just reply to this email and we'll find another one.</p>
+<p>Thank you,<br>Legacy Property Hub</p>`);
+}
+
+export function appointmentConfirmedEmailBody({ tenant, request, appt }) {
+  const firstName = tenant.full_name ? tenant.full_name.split(' ')[0] : 'there';
+  return emailShell(`<p>Hi ${escapeHtml(firstName)},</p>
+<p>Thanks for confirming. Your service appointment is all set.</p>
+${appointmentDetailsBox({ request, appt })}
+<p style="color:#5b6478;font-size:13px;">If anything changes, just reply to this email.</p>
+<p>Thank you,<br>Legacy Property Hub</p>`);
+}
+
+// Internal-only notice to legacy@facilityhubs.com when a tenant approves.
+export function appointmentApprovedAdminEmailBody({ tenant, request, appt }) {
+  return emailShell(`<p><strong>${escapeHtml(tenant.full_name)}</strong>${tenant.unit_label ? ` (${escapeHtml(tenant.unit_label)})` : ''} approved a service appointment.</p>
+${appointmentDetailsBox({ request, appt })}
+${emailButton(`${SITE_ORIGIN}/legacy/Admin/`, 'View in Admin Dashboard')}`);
+}
+
+// Full standalone page (not an email) for the approval link -- the same
+// branded card as the emails, centered on the app's background color.
+function appointmentPage(bodyHtml) {
+  return new Response(`<!doctype html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>Legacy Property Hub | Appointment</title>
+<link rel="icon" type="image/png" href="/assets/facility-hubs-favicon.png">
+</head>
+<body style="margin:0;background:#f5f6f9;padding:40px 16px;">
+${emailShell(bodyHtml)}
+</body></html>`, { headers: { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store' } });
 }
 
 // ---------------------------------------------------------------------
@@ -435,6 +524,128 @@ function tenantSummary(tenant, late, extraFees = []) {
     extraFees: extraFees.map((f) => ({ id: f.id, label: f.label, amountCents: f.amount_cents })),
     extraFeesCents: extraFees.reduce((sum, f) => sum + f.amount_cents, 0),
   };
+}
+
+// ---------------------------------------------------------------------
+// Maintenance request helpers.
+// ---------------------------------------------------------------------
+
+// 'open' and 'closed' are the original two; the middle two were added
+// with the Admin request detail view.
+const MAINTENANCE_STATUSES = ['open', 'scheduled', 'in_progress', 'closed'];
+
+function statusLabel(status) {
+  return { open: 'Open', scheduled: 'Scheduled', in_progress: 'In progress', closed: 'Closed' }[status] || status;
+}
+
+async function loadMaintenanceRequest(env, id) {
+  const row = await env.DB.prepare(
+    `SELECT m.id, m.issue_type, m.issue_started_on, m.description, m.status, m.created_at, m.updated_at,
+            t.id AS tenant_id, t.full_name, t.unit_label, t.email, t.phone
+     FROM maintenance_requests m JOIN tenants t ON t.id = m.tenant_id
+     WHERE m.id = ?`
+  ).bind(id).first();
+  if (!row) return null;
+  return {
+    request: {
+      id: row.id, issue_type: row.issue_type, issue_started_on: row.issue_started_on,
+      description: row.description, status: row.status, created_at: row.created_at, updated_at: row.updated_at,
+    },
+    tenant: { id: row.tenant_id, full_name: row.full_name, unit_label: row.unit_label, email: row.email, phone: row.phone },
+  };
+}
+
+// System-written history line (status changes, appointment emails,
+// tenant approvals) -- shown in the same timeline as admin notes.
+async function addMaintenanceEvent(env, requestId, text, author = null) {
+  await env.DB.prepare(
+    `INSERT INTO maintenance_notes (request_id, kind, body, author) VALUES (?, 'event', ?, ?)`
+  ).bind(requestId, text, author).run();
+}
+
+// GET/POST /legacy/appointment?token=... -- the tenant's approval page,
+// reached from the "Approve Appointment" button in the email. No sign-in
+// needed: the random single-appointment token is the credential. GET only
+// ever shows the details -- approving takes a deliberate POST from the
+// button on the page, because email security scanners open links in
+// emails automatically and would otherwise approve on the tenant's behalf.
+async function handleAppointmentPage(request, env, url) {
+  let token = url.searchParams.get('token') || '';
+  if (request.method === 'POST') {
+    const form = await request.formData().catch(() => null);
+    token = (form && form.get('token')) || token;
+  }
+  token = String(token);
+
+  const appt = token && /^[0-9a-f]{64}$/.test(token)
+    ? await env.DB.prepare('SELECT * FROM maintenance_appointments WHERE token = ?').bind(token).first()
+    : null;
+  if (!appt) {
+    return appointmentPage(`<p><strong>This link isn't valid.</strong></p>
+<p>It may have been copied incompletely. If you need help scheduling, reply to the appointment email or contact Legacy Property Hub.</p>`);
+  }
+  const loaded = await loadMaintenanceRequest(env, appt.request_id);
+  if (!loaded) {
+    return appointmentPage('<p><strong>This maintenance request is no longer available.</strong></p>');
+  }
+  const { tenant } = loaded;
+  const req = loaded.request;
+  const firstName = tenant.full_name ? tenant.full_name.split(' ')[0] : 'there';
+
+  if (appt.status === 'superseded') {
+    return appointmentPage(`<p>Hi ${escapeHtml(firstName)},</p>
+<p><strong>A newer appointment time has been sent for this request.</strong> Please use the most recent appointment email to confirm.</p>
+${appointmentDetailsBox({ request: req, appt })}`);
+  }
+
+  if (appt.status === 'approved') {
+    return appointmentPage(`<p>Hi ${escapeHtml(firstName)},</p>
+<p><strong>This appointment is confirmed.</strong> You're all set.</p>
+${appointmentDetailsBox({ request: req, appt })}`);
+  }
+
+  if (request.method !== 'POST') {
+    return appointmentPage(`<p>Hi ${escapeHtml(firstName)},</p>
+<p>Please review your service appointment${tenant.unit_label ? ` at ${escapeHtml(tenant.unit_label)}` : ''}:</p>
+${appointmentDetailsBox({ request: req, appt })}
+<form method="POST" action="/legacy/appointment" style="text-align:center;margin:22px 0;">
+<input type="hidden" name="token" value="${escapeHtml(token)}">
+<button type="submit" style="display:inline-block;background:#0d2b5c;color:#ffffff;border:none;font-weight:700;padding:13px 26px;border-radius:999px;font-size:15px;cursor:pointer;font-family:inherit;">Approve Appointment</button>
+</form>
+<p style="color:#5b6478;font-size:13px;">If this time doesn't work, reply to the appointment email and we'll find another one.</p>`);
+  }
+
+  // POST: approve, guarded on status so a double-click or replay is a no-op.
+  const result = await env.DB.prepare(
+    `UPDATE maintenance_appointments SET status = 'approved', responded_at = datetime('now')
+     WHERE id = ? AND status = 'pending'`
+  ).bind(appt.id).run();
+
+  if (result.meta && result.meta.changes > 0) {
+    const when = `${formatApptDate(appt.appointment_date)}, ${formatApptWindow(appt).replace('&ndash;', '-')}`;
+    await addMaintenanceEvent(env, req.id, `${tenant.full_name} approved the appointment for ${when}`);
+    if (req.status === 'open') {
+      await env.DB.prepare(
+        `UPDATE maintenance_requests SET status = 'scheduled', updated_at = datetime('now') WHERE id = ?`
+      ).bind(req.id).run();
+      await addMaintenanceEvent(env, req.id, 'Status changed from Open to Scheduled');
+    }
+    await sendEmail(env, {
+      to: appt.sent_to,
+      subject: `Appointment confirmed - ${formatApptDate(appt.appointment_date)}`,
+      replyTo: 'legacy@facilityhubs.com',
+      html: appointmentConfirmedEmailBody({ tenant, request: req, appt }),
+    });
+    await sendEmail(env, {
+      to: 'legacy@facilityhubs.com',
+      subject: `Appointment approved - ${tenant.unit_label || tenant.full_name}`,
+      html: appointmentApprovedAdminEmailBody({ tenant, request: req, appt }),
+    });
+  }
+
+  return appointmentPage(`<p>Hi ${escapeHtml(firstName)},</p>
+<p><strong>Thank you! Your appointment is confirmed.</strong> A confirmation email is on its way.</p>
+${appointmentDetailsBox({ request: req, appt })}`);
 }
 
 // GET /legacy/api/auth/verify?token=... -- NOT routed through handleApi,
@@ -799,6 +1010,121 @@ async function handleApi(request, env, url) {
     });
   }
 
+  // ---- Admin: single maintenance request (detail view) ----
+
+  const mDetailMatch = path.match(/^\/maintenance\/(\d+)$/);
+  if (mDetailMatch && request.method === 'GET') {
+    const session = await getSession(request, env);
+    if (!requireAdmin(session)) return json({ error: 'Forbidden' }, 403);
+    const loaded = await loadMaintenanceRequest(env, mDetailMatch[1]);
+    if (!loaded) return json({ error: 'Not found' }, 404);
+    const notes = await env.DB.prepare(
+      `SELECT id, kind, body, author, created_at FROM maintenance_notes
+       WHERE request_id = ? ORDER BY created_at DESC, id DESC`
+    ).bind(loaded.request.id).all();
+    const appts = await env.DB.prepare(
+      `SELECT id, appointment_date, start_time, end_time, message, status, sent_to, created_at, responded_at
+       FROM maintenance_appointments WHERE request_id = ? ORDER BY created_at DESC, id DESC`
+    ).bind(loaded.request.id).all();
+    return json({ ...loaded, notes: notes.results, appointments: appts.results });
+  }
+
+  const mStatusMatch = path.match(/^\/maintenance\/(\d+)\/status$/);
+  if (mStatusMatch && request.method === 'POST') {
+    const session = await getSession(request, env);
+    if (!requireAdmin(session)) return json({ error: 'Forbidden' }, 403);
+    const loaded = await loadMaintenanceRequest(env, mStatusMatch[1]);
+    if (!loaded) return json({ error: 'Not found' }, 404);
+    const body = await request.json().catch(() => ({}));
+    const status = String(body.status || '');
+    if (!MAINTENANCE_STATUSES.includes(status)) {
+      return json({ error: 'Choose a valid status.' }, 400);
+    }
+    if (status !== loaded.request.status) {
+      await env.DB.prepare(
+        `UPDATE maintenance_requests SET status = ?, updated_at = datetime('now') WHERE id = ?`
+      ).bind(status, loaded.request.id).run();
+      await addMaintenanceEvent(env, loaded.request.id,
+        `Status changed from ${statusLabel(loaded.request.status)} to ${statusLabel(status)}`, session.subject);
+    }
+    return json({ ok: true });
+  }
+
+  const mNotesMatch = path.match(/^\/maintenance\/(\d+)\/notes$/);
+  if (mNotesMatch && request.method === 'POST') {
+    const session = await getSession(request, env);
+    if (!requireAdmin(session)) return json({ error: 'Forbidden' }, 403);
+    const loaded = await loadMaintenanceRequest(env, mNotesMatch[1]);
+    if (!loaded) return json({ error: 'Not found' }, 404);
+    const body = await request.json().catch(() => ({}));
+    const text = body.body ? String(body.body).trim() : '';
+    if (!text || text.length > 2000) {
+      return json({ error: 'Enter a note (2,000 characters or fewer).' }, 400);
+    }
+    await env.DB.prepare(
+      `INSERT INTO maintenance_notes (request_id, kind, body, author) VALUES (?, 'note', ?, ?)`
+    ).bind(loaded.request.id, text, session.subject).run();
+    await env.DB.prepare(`UPDATE maintenance_requests SET updated_at = datetime('now') WHERE id = ?`)
+      .bind(loaded.request.id).run();
+    return json({ ok: true });
+  }
+
+  // Sends the tenant a proposed service appointment with an "Approve
+  // Appointment" button. Any earlier still-pending proposal for this same
+  // request is marked 'superseded', so only the newest link can approve.
+  const mApptMatch = path.match(/^\/maintenance\/(\d+)\/appointments$/);
+  if (mApptMatch && request.method === 'POST') {
+    const session = await getSession(request, env);
+    if (!requireAdmin(session)) return json({ error: 'Forbidden' }, 403);
+    const loaded = await loadMaintenanceRequest(env, mApptMatch[1]);
+    if (!loaded) return json({ error: 'Not found' }, 404);
+    const body = await request.json().catch(() => ({}));
+    const date = String(body.date || '').trim();
+    const startTime = String(body.startTime || '').trim();
+    const endTime = body.endTime ? String(body.endTime).trim() : null;
+    const message = body.message ? String(body.message).trim() : null;
+    const to = String(body.email || loaded.tenant.email || '').trim().toLowerCase();
+
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return json({ error: 'Choose an appointment date.' }, 400);
+    if (!/^\d{2}:\d{2}$/.test(startTime)) return json({ error: 'Choose a start time.' }, 400);
+    if (endTime && !/^\d{2}:\d{2}$/.test(endTime)) return json({ error: 'End time is not valid.' }, 400);
+    if (endTime && endTime <= startTime) return json({ error: 'End time must be after the start time.' }, 400);
+    if (message && message.length > 1000) return json({ error: 'Message must be 1,000 characters or fewer.' }, 400);
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(to)) return json({ error: 'Enter a valid email address.' }, 400);
+
+    await env.DB.prepare(
+      `UPDATE maintenance_appointments SET status = 'superseded' WHERE request_id = ? AND status = 'pending'`
+    ).bind(loaded.request.id).run();
+
+    const token = randomToken();
+    const appt = { appointment_date: date, start_time: startTime, end_time: endTime, message };
+    await env.DB.prepare(
+      `INSERT INTO maintenance_appointments
+         (request_id, appointment_date, start_time, end_time, message, token, sent_to, sent_by)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
+    ).bind(loaded.request.id, date, startTime, endTime, message, token, to, session.subject).run();
+
+    const sent = await sendEmail(env, {
+      to,
+      subject: `Service appointment - ${formatApptDate(date)}`,
+      replyTo: 'legacy@facilityhubs.com',
+      html: appointmentRequestEmailBody({
+        tenant: loaded.tenant, request: loaded.request, appt,
+        confirmUrl: `${url.origin}/legacy/appointment?token=${token}`,
+      }),
+    });
+
+    const when = `${formatApptDate(date)}, ${formatApptWindow(appt).replace('&ndash;', '-')}`;
+    await addMaintenanceEvent(env, loaded.request.id,
+      sent ? `Appointment request sent to ${to} for ${when}` : `Appointment saved for ${when}, but the email to ${to} failed to send`,
+      session.subject);
+
+    if (!sent) {
+      return json({ error: 'The appointment was saved, but the email could not be sent. Check the RESEND_API_KEY setup and try again.' }, 502);
+    }
+    return json({ ok: true, sentTo: to });
+  }
+
   // ---- Tenant-scoped (own tenant, or admin) ----
 
   const tenantMatch = path.match(/^\/tenants\/(\d+|me)$/);
@@ -1112,6 +1438,9 @@ export default {
     }
     if (url.pathname === '/legacy/api/auth/verify' && request.method === 'GET') {
       return handleAuthVerify(request, env, url);
+    }
+    if (url.pathname === '/legacy/appointment' && (request.method === 'GET' || request.method === 'POST')) {
+      return handleAppointmentPage(request, env, url);
     }
     if (url.pathname.startsWith('/legacy/api/')) {
       return handleApi(request, env, url);

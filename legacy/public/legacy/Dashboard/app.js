@@ -72,7 +72,7 @@
         return fetch('/legacy/api/tenants/me/maintenance')
           .then(function (r) { return r.json(); })
           .then(function (d) {
-            const open = (d.requests || []).filter(function (r) { return r.status === 'open'; }).length;
+            const open = (d.requests || []).filter(function (r) { return r.status !== 'closed'; }).length;
             $('openCount').textContent = open;
           });
       })

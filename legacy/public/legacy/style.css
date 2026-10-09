@@ -124,7 +124,7 @@ header.page-header p { color: var(--muted); margin: 6px 0 0; }
 .btn:disabled { opacity: .5; cursor: not-allowed; }
 .btn.gold { background: var(--gold); }
 .btn.gold:hover { background: var(--gold-light); }
-textarea, input[type="text"], input[type="date"], input[type="number"], select {
+textarea, input[type="text"], input[type="date"], input[type="number"], input[type="time"], input[type="email"], input[type="tel"], select {
   width: 100%; padding: 12px 14px; border: 1px solid var(--line-strong); border-radius: 8px;
   font: inherit; color: var(--ink); background: #fff;
 }
@@ -140,6 +140,9 @@ tr:last-child td { border-bottom: none; }
 .pill.succeeded, .pill.closed { background: var(--good-bg); color: var(--good); }
 .pill.pending, .pill.open { background: var(--pending-bg); color: var(--pending); }
 .pill.failed { background: var(--bad-bg); color: var(--bad); }
+.pill.scheduled { background: #e6eefb; color: var(--navy); }
+.pill.in_progress { background: #e3f3f4; color: var(--teal); }
+.pill.superseded { background: var(--bg); color: var(--muted); }
 .pill.current { background: var(--good-bg); color: var(--good); }
 .pill.late { background: var(--bad-bg); color: var(--bad); }
 .notice { padding: 14px 16px; border-radius: 10px; font-size: .88rem; margin-bottom: 20px; }

@@ -21,6 +21,10 @@ import {
   maintenanceRequestEmailBody,
   paymentReceivedEmailBody,
   paymentReceivedAdminEmailBody,
+  appointmentRequestEmailBody,
+  appointmentConfirmedEmailBody,
+  appointmentApprovedAdminEmailBody,
+  formatApptDate,
 } from '../src/index.js';
 
 // Edit these to try different names/amounts/etc.
@@ -38,6 +42,17 @@ const mock = {
     amount_cents: 150000,
     period_label: 'September 2026',
   },
+  maintenanceRequest: {
+    issue_type: 'Plumbing',
+    description: 'Kitchen faucet has been leaking steadily for the past few days.',
+  },
+  appt: {
+    appointment_date: '2026-10-16',
+    start_time: '09:00',
+    end_time: '12:00',
+    message: 'Our tech will need access to the cabinet under the kitchen sink.',
+  },
+  apptConfirmUrl: 'https://facilityhubs.com/legacy/appointment?token=TEST_TOKEN_1234',
 };
 
 const TEMPLATES = {
@@ -65,6 +80,20 @@ const TEMPLATES = {
     // caller's "to:" -- see below), so the recipient email itself isn't
     // baked into the body.
     html: () => paymentReceivedEmailBody(mock.paid),
+  },
+  'appointment-request': {
+    subject: `Service appointment - ${formatApptDate(mock.appt.appointment_date)}`,
+    html: () => appointmentRequestEmailBody({
+      tenant: mock.tenant, request: mock.maintenanceRequest, appt: mock.appt, confirmUrl: mock.apptConfirmUrl,
+    }),
+  },
+  'appointment-confirmed': {
+    subject: `Appointment confirmed - ${formatApptDate(mock.appt.appointment_date)}`,
+    html: () => appointmentConfirmedEmailBody({ tenant: mock.tenant, request: mock.maintenanceRequest, appt: mock.appt }),
+  },
+  'appointment-approved-admin': {
+    subject: `Appointment approved - ${mock.tenant.unit_label || mock.tenant.full_name}`,
+    html: () => appointmentApprovedAdminEmailBody({ tenant: mock.tenant, request: mock.maintenanceRequest, appt: mock.appt }),
   },
   'payment-received-admin': {
     subject: `Payment received - ${mock.paid.unit_label || mock.paid.full_name}`,

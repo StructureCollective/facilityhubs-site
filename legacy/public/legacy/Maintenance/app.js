@@ -142,7 +142,7 @@
     $('requestBody').innerHTML = requests.map(function (r) {
       return '<tr><td>' + esc(r.description) + '</td><td>' + esc(r.issue_type || '—') + '</td><td>' +
         fmtDateOnly(r.issue_started_on) + '</td><td><span class="pill ' + esc(r.status) + '">' +
-        esc(r.status) + '</span></td><td>' + fmtDate(r.created_at) + '</td></tr>';
+        esc(({ open: 'Open', scheduled: 'Scheduled', in_progress: 'In progress', closed: 'Closed' })[r.status] || r.status) + '</span></td><td>' + fmtDate(r.created_at) + '</td></tr>';
     }).join('');
   }
 })();
