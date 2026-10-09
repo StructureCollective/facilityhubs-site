@@ -1443,7 +1443,15 @@ export default {
       return handleAppointmentPage(request, env, url);
     }
     if (url.pathname.startsWith('/legacy/api/')) {
-      return handleApi(request, env, url);
+      // Unexpected failures (e.g. a database table that hasn't been
+      // created yet) come back as JSON with the real reason, instead of
+      // Cloudflare's generic error page the Admin screens can't read.
+      try {
+        return await handleApi(request, env, url);
+      } catch (err) {
+        console.error('API error', url.pathname, err);
+        return json({ error: `Server error: ${(err && err.message) || err}` }, 500);
+      }
     }
 
     // Everything else under /legacy/* is a static asset (HTML/CSS/JS).
